@@ -1,0 +1,3 @@
+- User can choose which data to run analysis on / user provides training data.
+	- Data format is specified by the back end (e.g. what type is a column in the table).
+	- Basic implementation will require performing data analysis on text input. Image analysis can be done as an extension.
