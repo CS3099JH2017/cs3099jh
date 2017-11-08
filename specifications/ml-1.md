@@ -35,12 +35,13 @@ death). The following techniques for data analysis should be implemeneted/used b
 
 ### Statistical Performance
 
-K-fold cross validation is to be done on the HCI side instead of ML. The plots for the other 
-statistical performance measures, namely:
+The plots for the statistical performance measures, namely:
+  - K-fold cross validation
   - Receiver-operating curves
   - Specificity-precision curves
   - Plots of feature importance
-could be done by either HCI or, upon request, by ML.
+will be done by ML and stored/returned as data points.
+It will be up to HCI to render the graphs from the data points.
 
 ### API Specifics
 
