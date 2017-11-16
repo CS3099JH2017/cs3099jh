@@ -1,6 +1,6 @@
 # THIS IS AN INITIAL **DRAFT** FOR A DATA REQUEST PROTOCOL
 ## Beginning of URL
-`https://example.cs.med.ac.uk/files'
+`https://example.cs.med.ac.uk/files`
 
 ## Requests
 Assuming this is preceded by something like the URL above, a request would be
