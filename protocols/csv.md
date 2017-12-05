@@ -1,3 +1,5 @@
+## Formal CSV Specification
+
 ML should only expect to handle data in the format specified below, and BE
 should only ever pass ML data in this format:
 
@@ -16,5 +18,5 @@ regardless of whether or not the field is quoted.
 ML should expect to deal with CSVs of this format, and BE should only pass CSVs of this 
 format to ML. If any other format is passed to ML, it is valid behaviour to throw an error.
 
-Example of a vlid record:
+Example of a valid record:
 ```testing, "1, \"quoted\"", help \"me\"```
