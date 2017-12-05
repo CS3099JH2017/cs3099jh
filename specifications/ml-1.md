@@ -17,10 +17,9 @@ be used in combination as the final system.
 ### Machine Learning and Data Analysis
 
 Every group doing ML is to create a server with a RESTful API (over HTTPS). The server is to 
-receiver requests for analysis from the frontend implemented by any Data Visualization group and 
-either retrieve the necessary data from the backend, perform the model training and return the 
-result or, if the model has previously been trained, retrieve the model and use that to generate 
-the result.
+receiver requests for analysis from the back end implemented by any Back End group and 
+on request either perform the model training and return the a model, or predict a result
+based on a model passed in by the back end. 
 
 ### Analysis Algorithms
 
@@ -43,30 +42,9 @@ The plots for the statistical performance measures, namely:
 will be done by ML and stored/returned as data points.
 It will be up to HCI to render the graphs from the data points.
 
-### API Specifics
-
-The basic idea of the part of the API that involves the ML side is the following: HCI sends a 
-request to train a model on particular attributes of a particular dataset (columns in a CSV 
-file), provides the ML server with the authentication key required to access the dataset, and 
-requests a result to be predicted from a set of variables matching the sample data.
-
-### File Format
-
-The basic file format that the ML server has to work with is CSV (apart from images). The 
-backend is responsible for converting the data to CSV on request. However, the file format for 
-the data should be specified as part of the request for the data and as an extension the ML 
-server can support other file formats.
-
-### Model Storage
-
-The ML server can store any model it trains on the backend server. If a request is made for a 
-model that has already been computed, it may be reused to save time. The result of the 
-prediction requested by the HCI server may also be stored in the backend server, if it were to 
-request that.
-
 ### Plot Generation
 
-Plot generation should be done by both HCI and, upon request, by ML. 
+Plot generation should be done by HCI. 
 
 ### Additional Points of Interest
 
