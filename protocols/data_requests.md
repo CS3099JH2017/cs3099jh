@@ -6,29 +6,29 @@ preceded by something similar to the above 'base URL'.
 
 ## Requests
 A request has the form:  
-`/files/project/directory/file?filters`  
+`/project/files/directory/file?filters`  
 such that:  
 - a request is of a 'path-like' form,
 - `file`can be either the file UUID or the file path,
-- `project` would be the project UUID,
+- `project` will be the project name,
 - `?` token separates the 'path' from the 'interface',
 - `filters` as described below.
 
 ## Filters
-Filters would:
+Filters will:
 - be preceded by a `?`
 - then have a number of 'key-value pairs', separated by `&`
 
 ## CSV File Requests
 1. Metadata
-  - `baseurl/project/fileuuid?view=meta`  
+  - `baseurl/project/files/fileuuid?view=meta`  
     OR  
-    `baseurl/project/filepath?view=meta`
+    `baseurl/project/files/filepath?view=meta`
   - returns column names and indexes
 2. Actual data
-  - `baseurl/project/fileuuid`  
+  - `baseurl/project/files/fileuuid`  
     OR  
-    `baseurl/project/filepath`
+    `baseurl/project/files/filepath`
     - assume actual data unless otherwise specified  
   - FILTERS: see below
 
@@ -51,10 +51,10 @@ Delimited by `&`
 `?view=actual&cols=0,2,3,5,7&rowstart=153&rowcount=1000`
 
 ## Image filters
-- `channel`
+- `img_channel`
   - index of colour channel
-- `zoom`
-  - a number representing the 'zoom level' dresired
+- `img_zoomlevel`
+  - a number representing the 'zoom level' desired <!--TODO-->
 - `img_xoffset`
   - relative to top left corner
   - UNITS: 'real pixels', i.e. agnostic of zoom levels
@@ -67,7 +67,6 @@ Delimited by `&`
   - UNITS: 'real pixels', i.e. agnostic of zoom levels
 
 
-
-# Adding/Uploading Files
+## Adding/Uploading Files
 - POST request
 - post the entire file
