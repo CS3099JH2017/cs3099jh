@@ -9,7 +9,7 @@ of the form:
 where  
 - a request is of a 'path-like' form,
 - `project` would be the project id,
-- `::` or a similar, non-path token separates the 'path' from the 'interface',
+- `?` token separates the 'path' from the 'interface',
 - `interface_name` describes the data request and optionally? format.
 
 ## Interfaces
@@ -25,5 +25,43 @@ Examples:
   describes tabular data, taken from the 'name', 'age', and 'ttd' (time to death)
 columns, entries 23 to 45, in csv format.
 - `::tabular/<cols>/<rows>/format=csv`
-- `::zoom_image/lod/`
+- `::zoom_image/lod/`  
 
+# 2017-12-06 - HCI-BE
+1. Metadata
+  - baseurl/project/fileuuidORfilepath?view=meta
+  - col names, indexes, and types
+2. Actual
+  - baseurl/project/fileuuidORfilepath
+    - assume actual unless otherwise specified  
+
+## CSV Filters/Keywords:
+Delimited by `&`
+- view
+- cols
+  - lack of cols means everything
+  - comma separated positive integers including zero, e.g. `cols=0,3,7`
+  - not required to be in order
+- rowstart & rowcount
+  - rowstart default is 0
+  - rowcount default is from start to end of table  
+
+`?view=actual&cols=0,2,3,5,7&rowstart=153&rowcount=1000`
+
+## Image filters
+- channel
+  - index of colour channel
+- zoom
+- img_xoffset
+- img_yoffset
+  - both rel to top left corner
+  - real pixels, i.e. agnostic of zoom levels
+- img_width
+- img_height
+  - real pixels, i.e. agnostic of zoom levels
+
+
+
+# Adding/Uploading Files
+- POST request
+- post the file
