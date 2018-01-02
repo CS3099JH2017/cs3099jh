@@ -899,10 +899,11 @@ If the client makes a request using an unkown or unsupported view then the serve
 ### raw file view
 The "raw" file view (accssed by setting "view=raw" in the query string) provides access to the file as a stream of bytes.
 The following paramters are accepeted:
-| name   | description                                                                                                      | if not specified |
-|--------|------------------------------------------------------------------------------------------------------------------|------------------|
-| offset | offset into the file, in bytes - the server will omit this number of bytes from the start of the response        | assume 0         |
-| length | total number of bytes to retrieve - server will truncate the response so that it is at most "length" bytes long. | data is not truncated before sending                 |
+
+| name   | description                                                                                                      | if not specified                     |
+|--------|------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| offset | offset into the file, in bytes - the server will omit this number of bytes from the start of the response        | assume 0                             |
+| length | total number of bytes to retrieve - server will truncate the response so that it is at most "length" bytes long. | data is not truncated before sending |
 
 The server **MUST** respond with mimetype `application/octet-stream'`.
 
@@ -914,7 +915,7 @@ The following addiontional paramters **MUST** be accepted by the server
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | overwrite | allow file overwrites - do not cause an error if the file already exists.                                                                                  | exit with error code 400 and message "file_already_exists" if the file already exists |
 | offset    | seek to the specified offset in the file before writing - if the file has to be extended to meek this request then the new space will be filled with zeros | data is written to the start of the file                                              |
-| truncate  | after writing the size of the file is reduced so that the last byte in the file is the last byte written                                                   | file size never shrinks                                                                                      |
+| truncate  | after writing the size of the file is reduced so that the last byte in the file is the last byte written                                                   | file size never shrinks                                                               |
 
 **NOTE:** A file can be truncated to a give size by issuing an empty POST request with paramters `overwrite=true&offset=<new_size>&truncate=true`
 
@@ -965,6 +966,7 @@ Where columns gives all of the names of the columns. and rows the number of (non
 
 ### The tabular view
 The tabular view supports the following parameters
+
 | name     | description                                                                                                                                        | if not specified           |
 |----------|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
 | rowstart | first non-header row to be included in the output                                                                                                  | assume = 0                 |
@@ -1005,6 +1007,7 @@ where width and height give the image dimensions (at the max scale level) and th
 
 ### The Scalable Image view
 This view supports the following parameters
+
 | name         | description                                                                                                                  | if not specified                                |
 |--------------|------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
 | channel_name | image channel to operate on                                                                                                  | send response 400, with error "invalid_request" |
