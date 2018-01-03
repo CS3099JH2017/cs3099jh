@@ -524,7 +524,7 @@ Clients presenting an interface **SHOULD** at least warn the end-user before alt
 ## Listing available privileges
 Any authorised client can access
 ```
-http://backend.endpoint/users/privileges
+http://backend.endpoint/user_privileges
 ```
 
 And the servers response, unwrapped, must match
@@ -541,7 +541,7 @@ array({
 ## Listing
 Clients can access
 ```
-http://backend.endpoint/user_privileges
+http://backend.endpoint/users
 ```
 
 If the client is authorised as a user with the `admin` privilege  the server **MUST** respond with a list of users, with the unwrapped response matching
