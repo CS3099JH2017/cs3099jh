@@ -3,7 +3,7 @@
 
 | name                       | BE01               |
 |----------------------------|--------------------|
-| version                    | 0.1.1              |
+| version                    | 0.1.2              |
 | status                     | proposal           |
 | author                     | Ryan Wilson (rw86) |
 | serving component(s)       | backend            |
@@ -21,6 +21,11 @@ First draft
 
 ### Version 0.1.1
 Added an API to list availble privileges.
+
+### Version 0.1.2
+Added an API to list availble project roles.
+Clarified permissions required to edit project grants.
+Changed endpoint for listing user privileges
 
 # Foreword: URL
 
@@ -536,7 +541,7 @@ array({
 ## Listing
 Clients can access
 ```
-http://backend.endpoint/users
+http://backend.endpoint/user_privileges
 ```
 
 If the client is authorised as a user with the `admin` privilege  the server **MUST** respond with a list of users, with the unwrapped response matching
@@ -747,6 +752,23 @@ project names starting with an underscore are reserved. It is highly recommended
 
 Groups are given exlusive access to projects that are prefixed by an underscore and then then their group name (uppercase without a dash). eg "_ML1_internal_data".
 
+## Listing available roles
+Any authorised client can access
+```
+http://backend.endpoint/project_roles
+```
+
+And the servers response, unwrapped, must match
+```javascript
+array({
+    "role": string,
+    "description": string,
+    "internal": boolean
+})
+```
+
+`"internal"` indicates a privilege that should not be (by default) displayed or offered as a choice when assigning privileges.
+
 ## Listing
 All clients can access
 ```
@@ -856,7 +878,7 @@ The server **MUST** respond "project_not_found" and response code 404 if the pro
 or if the project was deleted a successfull empty response.
 
 ## Project grants
-A client with the `project_admin` access right may change a users access rights to a project by issuing a POST request to 
+A client with the `project_admin` access right or with the `admin` privilege may change a users access rights to a project by issuing a POST request to 
 ```
 http://backend.endpoint/projects/<project_name>?action=update_grant
 ```
