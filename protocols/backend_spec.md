@@ -767,7 +767,7 @@ array({
 })
 ```
 
-`"internal"` indicates a privilege that should not be (by default) displayed or offered as a choice when assigning privileges.
+`"internal"` indicates a role that should not be (by default) displayed or offered as a choice when assigning roles.
 
 ## Listing
 All clients can access
