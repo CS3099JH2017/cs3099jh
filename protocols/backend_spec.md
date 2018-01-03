@@ -476,7 +476,7 @@ with body
 ```javascript
 array({
     "id": string,
-    "value": alternative([string, int])
+    "value": alternative([string, int, boolean])
 })
 ```
 The backend **SHOULD** only update properties given in body.
