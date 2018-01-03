@@ -292,11 +292,11 @@ Example metadata might be
 }
 ```
 
-When setting metadata the backend must ensure that it matches the `metadata` template and have a the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then no extra restriction is placed on the version field.
+When setting metadata the backend must ensure that it matches the `metadata` template and have a the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then the version field must be 1.
 
 If the format of metadata inside a client request is not correct the server should responsd with code 400 and error "invalid_metadata"
 
-If the version number is not correct the server should respond with "invalid_metadata_version" in this case the client should retry (starting again from read).
+If the version number is not correct the server should respond with 400, "invalid_metadata_version" in this case the client should retry (starting again from read).
 
 ## OAuth
 **Note that responses here do not exactly follow the JSON response format**
@@ -1015,6 +1015,25 @@ Chunking allows resuming interrupted uploads as well as progress reporting to th
 A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
 The server **MUST** respond with an empty successful response or a metadata error (or a file not found error).
+
+### deleting metadata
+A POST request sent to a file path with query paramter `"action=delete_metadata&version=<version>"` triggers the server to delete the files metadata if the version matches.
+
+If the version does not match then the server **MUST** return http code 400, and error message "invalid_metadata_version".
+
+If successful server **MUST** respond with an empty successful response.
+
+**NOTE**
+Deleting metadata inherently introduces race conditions. It is **much** preferred that clients simply upload a new, empty, metadata object.
+
+If, for example, the current version is 1:
+- client A reads the metadata and assembles the modified object
+- client B deletes the metadata
+- client B add new metadata the version is now, again, 1
+- client A uploads its new metadata specifying version 2
+- The server checks the version matches and assumes that client A
+  has seen and incorporated client B's changes.
+  It accepts the metadata, reverting client B's changes.
 
 ### creating directories
 If a POST request is made to a non existent path with query paramter "action=mkdir" an attempt to make a new directory is made.
