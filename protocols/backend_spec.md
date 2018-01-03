@@ -1003,12 +1003,13 @@ If the write was successfull the server **MUST** respond with an empty successfu
 **NOTE: Uploading files**
 Clients that wish to upload files are recommended to follow these steps:
 - Where possible, split the file into fixed size chunks (eg. 4Mib)
-- Upload the first chunk without the "overwrite" option
+- Upload the first chunk
 - Upload the middle chunks with the "overwrite" option
 - Upload the final chunk with the "overwrite" and "final" options
-- If this file is to be uploaded in a single chunk only the "final" option should be used for this chunk.
+- (If the file is to be uploaded in a single chunk only the "final" option should be used for this chunk.)
+
 This prevents a race condition whereby multiple clients try to upload a file with the same name - in this case only one will succeed.
-This also allows resuming interrupt uploads as well as progress reporting to the end user.
+Chunking allows resuming interrupted uploads as well as progress reporting to the end user.
 
 ### changing metadata
 A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
