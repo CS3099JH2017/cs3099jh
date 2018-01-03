@@ -990,13 +990,25 @@ The following addiontional paramters **MUST** be accepted by the server
 
 **NOTE:** A file can be truncated to a give size by issuing an empty POST request with paramters `overwrite=true&offset=<new_size>&truncate=true`
 
+**NOTE:** File uploads without the the overwrite flag **SHOULD** create the file atomically (eg. mimic the behaviour of `open(..., O_RDWR | O_CREAT | O_EXCL)`). This could be used as a coarse form of locking.
+
+**NOTE:** File operations on overlapping regions (or when both operations require extending the file) are not required to be atomic.
+
 If the parent directory does not exist (or is not a directory) the server **MUST** respond with code 404 and error message "invalid_parent_directory".
 
 If the file is not in the "uploading" state the server **MAY** respond with code 400 and error message "invalid_file_state".
 
 If the write was successfull the server **MUST** respond with an empty successful response.
 
-**NOTE: Chunked Uploads** for large files clients are recommended to, where possible, split the file into fixed size chunks (eg. 4Mib) and upload each chunk individually. This allows resuming interrupt uploads as well as progress reporting to the end user.
+**NOTE: Uploading files**
+Clients that wish to upload files are recommended to follow these steps:
+- Where possible, split the file into fixed size chunks (eg. 4Mib)
+- Upload the first chunk without the "overwrite" option
+- Upload the middle chunks with the "overwrite" option
+- Upload the final chunk with the "overwrite" and "final" options
+- If this file is to be uploaded in a single chunk only the "final" option should be used for this chunk.
+This prevents a race condition whereby multiple clients try to upload a file with the same name - in this case only one will succeed.
+This also allows resuming interrupt uploads as well as progress reporting to the end user.
 
 ### changing metadata
 A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
@@ -1099,7 +1111,7 @@ This view supports the following parameters
 | height       | height, in unscaled pixels, of the region requested                                                                          | set so that y_offset + height = image_height    |
     
 
-The mimetype of a successful response *MUST* be "image/png".
+The mimetype of a successful response **MUST** be "image/png".
 
 If the region specified extends outside the image the server should fill in the remainder of the image with the color `#000000ff`.
 
