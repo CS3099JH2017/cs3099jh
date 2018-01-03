@@ -3,7 +3,7 @@
 
 | name                       | BE01               |
 |----------------------------|--------------------|
-| version                    | 0.1                |
+| version                    | 0.1.1              |
 | status                     | proposal           |
 | author                     | Ryan Wilson (rw86) |
 | serving component(s)       | backend            |
@@ -18,6 +18,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 ## Changelog
 ### Version 0.1
 First draft
+
+### Version 0.1.1
+Added an API to list availble privileges.
 
 # Foreword: URL
 
@@ -191,7 +194,7 @@ Unless otherwise noted the form of the JSON response **MUST** match either:
     "status": "error",
     "error": string,
     "error_description": string,
-    "error_data": optional({})
+    "error_data": optional(anything)
 }
 ```
 in the case of an error. Where `error` gives a standard error name found from a specification and `error_description` some human readable error message.
@@ -261,7 +264,7 @@ Note that names are always two uppercase characters followed by two digits.
 When an update is issued that causes an error (eg. due to invalid data) the server **MUST NOT** have partialy applied attributes in the update. IE. updates are atomic.
 
 # Metadata updates
-Several objects have associated metadata objects for clients to use. This metadata **SHOULD** be interpreted as follows
+Several objects have associated metadata objects for clients to use. This metadata **MUST** match
 
 ```javascript
 exact({
@@ -298,7 +301,7 @@ Example metadata might be
 }
 ```
 
-When setting metadata the backend must ensure that it matches the `metadata` template and have a the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then the version field must be 1.
+When setting metadata the backend must ensure that it matches the `metadata` template and that the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then the version field must be 1.
 
 If the format of metadata inside a client request is not correct the server should responsd with code 400 and error "invalid_metadata"
 
@@ -317,7 +320,7 @@ Clients **MUST** send all paramters urlencoded in the body of a `POST` request t
 ```
 grant_type=password
 username=<username>
-password=<user password>
+password=<user_password>
 ```
 
 The server then tries to authenticate the user and, if successful, **SHOULD** respond with
@@ -363,7 +366,7 @@ Long running clients (eg. machine learning servers performing jobs that may take
 When making a refresh token grant clients **MUST** send all paramters urlencoded in the body of a `POST` request to the endpoint. Requests **MUST** be of the form
 ```
 grant_type=refresh_token
-refresh_token=<refresh token>
+refresh_token=<refresh_token>
 ```
 where `refresh_token` is a token that previously appeared in a server response and is still under its validity period.
 
@@ -481,7 +484,7 @@ array({
 ```
 The backend **SHOULD** only update properties given in body.
 
-If a property that does not exist or is read only the server **SHOULD** respond with http response 400 and error "invalid_property" and set `"error_data"` to the property's name.
+If a property does not exist or is read only the server **SHOULD** respond with http response 400 and error "invalid_property" and set `"error_data"` to the property's name.
 
 If an invalid property value is given the backend **SHOULD** respond with http response 400 and error "invalid_property_value" and set `"error_data"` to the property's name.
 
@@ -512,6 +515,23 @@ All groups have the reserved right to the service account formed by prefixing th
 If external servers require service accounts it is their responsibility to create and securely store the credentials. Typically during set-up these servers will require admin credentials in order to perform the creation but **SHOULD NOT** save these admin credentials.
 
 Clients presenting an interface **SHOULD** at least warn the end-user before altering/deleting these accounts.
+
+## Listing available privileges
+Any authorised client can access
+```
+http://backend.endpoint/users/privileges
+```
+
+And the servers response, unwrapped, must match
+```javascript
+array({
+    "privilege": string,
+    "description": string,
+    "internal": boolean
+})
+```
+
+`"internal"` indicates a privilege that should not be (by default) displayed or offered as a choice when assigning privileges.
 
 ## Listing
 Clients can access
