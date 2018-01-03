@@ -1,27 +1,33 @@
 # BE01: Backend basic specification
 **THIS IS A DRAFT SPECFICATION AND IS NOT FINAL**
 
-| name                                        | BE01               |
-|---------------------------------------------|--------------------|
-| status                                      | proposal           |
-| author                                      | Ryan Wilson (rw86) |
-| serving component(s)                        | backend            |
-| consuming component(s)                      | all                |
-| basic spec                                  | yes                |
-| can be required by servers                  | yes                |
-| can be required by clients                  | yes                |
+| name                       | BE01               |
+|----------------------------|--------------------|
+| version                    | 0.1                |
+| status                     | proposal           |
+| author                     | Ryan Wilson (rw86) |
+| serving component(s)       | backend            |
+| consuming component(s)     | all                |
+| basic spec                 | yes                |
+| can be required by servers | yes                |
+| can be required by clients | yes                |
 
-    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
-## Foreword: URL
+
+## Changelog
+### Version 0.1
+First draft
+
+# Foreword: URL
 
 Within this document the URL `http://backend.endpoint/` will be used to indicate the base URL of the backend server's API endpoint.
 
-## Foreword: Matching notation
+# Foreword: Matching notation
 
 At several points in this document a specification of a JSON value must be given. These specifications are to be interpreted as follows:
 
-### literals
+## literals
 The template `integer` matches any integer value.
 
 The template `string` matches any string value.
@@ -31,7 +37,7 @@ The template `boolean` matches any boolean value.
 The template `anything` matches any value.
 
 The template `not_present` requires that the property is not present in the containing object.
-### raw object
+## raw object
 objects match if the value contains corresponding values for each given key. The value may have additional, not specified, keys.
 ```javascript
 {
@@ -51,7 +57,7 @@ but not
     "other": 2
 }
 ```
-### exact matching
+## exact matching
 if an object is enclosed in `exact(...)` then it may not have additional keys, in particular
 ```javascript
 exact({
@@ -65,7 +71,7 @@ does not match
     "other": 2
 }
 ```
-#### raw array
+## raw array
 The array must match exactly including number of elements and the order of those elements.
 ```javascript
 [1, 2, 3]
@@ -79,7 +85,7 @@ or
 [3, 2, 1]
 ```
 
-### optional values
+## optional values
 Templates of the form ` optional(x)` match either values that are not present or values that match `x`
 ```javascript
 {
@@ -107,7 +113,7 @@ but not
     "other": 3
 }
 ```
-### variable length arrays
+## variable length arrays
 templates of the form ` array(x)` matches an array whose elements all match `x`
 ```javascript
 array({"a": 1})
@@ -128,7 +134,7 @@ but not
     {"c": 4}
 ]
 ```
-### alternatives
+## alternatives
 templates of the form ` alternative([x, y, ..., z])` matches values who are matched by any of `x`, `y` ... `z`
 ```javascript
 {
@@ -157,7 +163,7 @@ and
     }
 }
 ```
-### not present
+## not present
 ```javascript
 {
     "a": not_present
@@ -176,9 +182,9 @@ but not
     "a": "thing"
 }
 ```
-## Basic Response
+# Basic Response
 Unless otherwise noted requests and responses are made in JSON, and the servers `Content-Type` header should indicate a mimetype of `application/json`. Requests and responses **SHOULD** be encoded in `UTF-8`.
-
+v
 Unless otherwise noted the form of the JSON response **MUST** match either:
 ```javascript
 {
@@ -226,10 +232,10 @@ If a client request does not match a pattern that the specification requires tha
     "error_description": "The client made an invalid request."
 }
 ```
-## Internal errors
+# Internal errors
 At any time the server **MAY** respond to a request with response code 500 and return error "internal_server_error".
 
-## Indicating protocol support
+# Indicating protocol support
 
 Upon request to the url
 ```
@@ -251,10 +257,10 @@ A specification **MUST** only be listed in at most one of these arrays. Specific
 
 Note that names are always two uppercase characters followed by two digits.
 
-## General updates
+# General updates
 When an update is issued that causes an error (eg. due to invalid data) the server **MUST NOT** have partialy applied attributes in the update. IE. updates are atomic.
 
-## Metadata updates
+# Metadata updates
 Several objects have associated metadata objects for clients to use. This metadata **SHOULD** be interpreted as follows
 
 ```javascript
@@ -298,7 +304,7 @@ If the format of metadata inside a client request is not correct the server shou
 
 If the version number is not correct the server should respond with 400, "invalid_metadata_version" in this case the client should retry (starting again from read).
 
-## OAuth
+# OAuth
 **Note that responses here do not exactly follow the JSON response format**
 The URL
 ```
@@ -306,7 +312,7 @@ http://backend.endpoint/oauth/token
 ```
 **MUST** be compliant with the following, reduced, specification of a token granting endpoint from OAuth2.
 
-### Password grant
+## Password grant
 Clients **MUST** send all paramters urlencoded in the body of a `POST` request to the endpoint. Requests **MUST** be of the form
 ```
 grant_type=password
@@ -351,7 +357,7 @@ exact({
 })
 ```
 
-### Refresh grant
+## Refresh grant
 Long running clients (eg. machine learning servers performing jobs that may take a long time to complete) may wish to get an access token with a longer validity time than the one they currently have to avoid having to cancel an operation or prompting the user for credentials. To meet this need backend servers **MUST** also support refresh token grants.
 
 When making a refresh token grant clients **MUST** send all paramters urlencoded in the body of a `POST` request to the endpoint. Requests **MUST** be of the form
@@ -373,14 +379,14 @@ exact({
 ```
 The response gives the new token. This response is subject to the same conditions as the response to a password grant. The server **MAY** reuse the `access_token` or `refresh_token` but if it does so it **MUST** ensure that the validity of the new tokens extend to match the new expiry time.
 
-### Using tokens
+## Using tokens
 After reciving a valid access token the client uses it to authenticate by setting its `Authorisation` HTTP header to exactly
 ```javascript
 "Bearer " + access_token
 ```
 in subsequent requests to the server.
 
-### Unauthorised requests
+## Unauthorised requests
 
 If a client makes a request to a resource that it does not have access to then the server **SHOULD** response with HTTP code 401 and `"not_authorised"` error. Ie. A response matching
 ```javascript
@@ -390,8 +396,8 @@ If a client makes a request to a resource that it does not have access to then t
     "error_description": string
 }
 ```
-## Logging
-### Storing
+# Logging
+## Storing
 The server **MAY** provide a logging endpoint for all components to use.
 Any client with the `logging` privilege (see section on users) may POST to
 ```
@@ -411,11 +417,13 @@ The server must store alongside each message the username of the logged in user 
 
 If the request was valid and the server supports logging it should respond with an sucessful empty response.
 
-### Retrieving
+## Retrieving
 Clients authorised as a user with the `admin` privilege can access
 ```
-http://backend.endpoint/log?before=<ISO 8601 date time>&after=<ISO 8601 date time>&level=<level>
+http://backend.endpoint/log?before=<datetime>&after=<datetime>&level=<level>
 ```
+Datetimes are formatted according to ISO 8601.
+
 To retrieve log messages in the given date range and at log level `<level>` or above. Any parameter can be ommited in which case the given filter (before, after or log level) is not applied.
 
 If the server does not implement logging it **MUST** report an error "logging_not_enabled" and http error code 501.
@@ -432,7 +440,7 @@ array({
 ```
 `"timestamp"` should be an ISO 8601 formatted datetime. The array should be sorted newest to oldest.
 
-## Properties
+# Properties
 The server may wish to expose user/progam configurable properties, (these could control things like backup policy, or provide an option to reset the server).
 
 Any authorised client can access
@@ -477,7 +485,7 @@ If a property that does not exist or is read only the server **SHOULD** respond 
 
 If an invalid property value is given the backend **SHOULD** respond with http response 400 and error "invalid_property_value" and set `"error_data"` to the property's name.
 
-## Users
+# Users
 The backend server supports the concept of a users.
 Users have at least:
 - A username (an underscore prefix indicates a service account)
@@ -494,7 +502,7 @@ Users have at least:
   - A metadata object that can be accessed by users with the `admin` privilege, and updated by users with the `admin` privilege, "private_admin_metadata"
     - This could be used to store, for example, a flag indicating that the account cannot be deleted.
 
-### Service accounts
+## Service accounts
 some users may be "service accounts" which are accounts intended to only be used by a server not acting on behalf of an end-user. From the servers perspective nothing distinguishes service accounts from normal accounts.
 
 From a clients perspective a service account is an account with a username that begins with an underscore.
@@ -505,7 +513,7 @@ If external servers require service accounts it is their responsibility to creat
 
 Clients presenting an interface **SHOULD** at least warn the end-user before altering/deleting these accounts.
 
-### Listing
+## Listing
 Clients can access
 ```
 http://backend.endpoint/users
@@ -543,7 +551,7 @@ array({
 })
 ```
 
-### Specific user
+## Specific user
 Clients can access
 ```
 http://backend.endpoint/users/<username>
@@ -583,7 +591,7 @@ array({
 
 or if the user does not exist it **MUST** return HTTP response code 404 and a `"user_not_found"` error.
 
-### current user
+## current user
 Any client may access details about their currently logged in user from
 ```
 http://backend.endpoint/current_user
@@ -604,7 +612,7 @@ and the server **MUST** respond with details of the particular user if they exis
 }
 ```
 
-### Creating
+## Creating
 A client with the `admin` privilege may create a user by issuing a POST request to 
 ```
 http://backend.endpoint/users/<username>?action=create
@@ -629,7 +637,7 @@ or return an error "invalid_user" and response code 400. This may happen, for ex
 
 or return an error "user_already_exists" and response code 400 if the user exists already.
 
-### Updating
+## Updating
 A client with the `admin` privilege may update a user by issuing a POST request to 
 ```
 http://backend.endpoint/users/<username>?action=update
@@ -658,7 +666,7 @@ or return an error "user_not_found" and response code 404 if the user cannot be 
 
 or return a metadata error.
 
-### Updating yourself
+## Updating yourself
 A client may update a subset of the details of the user it is logged in as by issuing a POST request to
 ```
 http://backend.endpoint/current_user?action=update
@@ -686,7 +694,7 @@ or return a metadata error.
 
 If the change was successful the server **MUST** respond with a sucessful empty response.
 
-### Deleting
+## Deleting
 A client with the `admin` privilege may delete a user (who is not themself) by issuing a POST request to 
 ```
 http://backend.endpoint/users/<username>?action=delete
@@ -697,7 +705,7 @@ or if the user is the current user, 400 and error message "invalid_user",
 
 or if the user was deleted a successfull empty response.
 
-### User Properties
+## User Properties
 The backend may wish to expose additional configuration options for individual users. the URL endpoint for this is:
 ```
 http://backend.endpoint/users/<username>/properties
@@ -706,7 +714,7 @@ otherwise the behaviour is exactly the same as the global properties endpoint.
 These could be used to implement, for example, per user quotas or provide an option to expire all active login tokens.
 
 
-## Projects
+# Projects
 The backend server supports the concept of a project.
 Projects have at least:
 - A fixed name
@@ -719,7 +727,7 @@ project names starting with an underscore are reserved. It is highly recommended
 
 Groups are given exlusive access to projects that are prefixed by an underscore and then then their group name (uppercase without a dash). eg "_ML1_internal_data".
 
-### Listing
+## Listing
 All clients can access
 ```
 http://backend.endpoint/projects
@@ -742,7 +750,7 @@ array({
 
 `"admin_metadata"` **MUST** only be present when the client has at least `project_admin` access to the given projects.
 
-### Specific project
+## Specific project
 Clients that have at least `regular` access to a given project can request
 ```
 http://backend.endpoint/projects/<project_name>
@@ -765,7 +773,7 @@ and the server **MUST** respond with details of the particular project if it exi
 
 or if the project does not exist it **MUST** return HTTP response code 404 and a `"project_not_found"` error.
 
-### Creating
+## Creating
 A client with the `admin` privilege may create a project by issuing a POST request to 
 ```
 http://backend.endpoint/projects/<project_name>?action=create
@@ -791,7 +799,7 @@ or return an error "project_already_exists" and response code 400 if the project
 
 or return a metadata error.
 
-### Updating
+## Updating
 A client with the `project_admin` access right may update a project by issuing a POST request to 
 ```
 http://backend.endpoint/projects/<project_name>?action=update
@@ -818,7 +826,7 @@ or return an error "project_not_found" and response code 404 if the project cann
 
 or return a metadata error.
 
-### Deleting
+## Deleting
 A client with the `admin` privilege (**NOTE** different to `project_admin` access rights) may delete a project by issuing a POST request to 
 ```
 http://backend.endpoint/projects/<project_name>?action=delete
@@ -827,7 +835,7 @@ The server **MUST** respond "project_not_found" and response code 404 if the pro
 
 or if the project was deleted a successfull empty response.
 
-### Project grants
+## Project grants
 A client with the `project_admin` access right may change a users access rights to a project by issuing a POST request to 
 ```
 http://backend.endpoint/projects/<project_name>?action=update_grant
@@ -848,7 +856,7 @@ The server **MUST** respond "user_not_found" and response code 404 if the user c
 
 The server **MUST** respond with a successful empty response if the access level was updated.
 
-### Project Properties
+## Project Properties
 The backend may wish to expose additional configuration options for individual projects. the URL endpoint for this is:
 ```
 http://backend.endpoint/projects/<project_name>/properties
@@ -856,15 +864,15 @@ http://backend.endpoint/projects/<project_name>/properties
 otherwise the behaviour is exactly the same as the global properties endpoint.
 These could be used to implement, for example, per project storage quotas or provide an option to log all file accesses.
 
-## File access
+# File access
 **NOTE:** all file operations require that clients have at least `regular` access to the project.
 
-### File paths
-Each project has associated with a file store. Files are organised into directories. Valid File/directory names are `UTF-8` strings that do not contain "/" or "\\"
+## File paths and ids
+Each project has associated with a file store. Files are organised into directories. Valid File/directory names are `UTF-8` strings that do not contain `"/"` or `"\"`
 
-"\." and "\.\." are **not** valid file/directory names.
+`"."` and `".."` are **not** valid file/directory names.
 
-Valid paths consist of valid file names seperated by a single "/".
+Valid paths consist of valid file names seperated by a single `"/"`.
 
 If an invalid path is presented the server **SHOULD** with response code 400 and error "invalid_path".
 
@@ -884,12 +892,14 @@ http://backend.endpoint/projects/<project_name>/files_by_id/<id>
 
 If a request (that is not a create request) is made for a path/id that does not exist then the server **SHOULD** with response code 404 and error message "file_not_found".
 
-### views
+The server **MUST NOT** reuse file ids - in particular if a file is deleted and then recreated it's id **MUST** change. Clients are recommended to first access a file by path, but subsequent accesses during the same session should be made by id. This prevents a deleted and then recreated file from causing races.
+
+## views
 Files are accessed under a given view specifed by setting the query parameter `view=<view_name>`. All files support at least the `"meta"` view. If a view is not specified then the `"meta"` view assumed.
 
 All files that are not directories support access to the raw bytes with the `"raw"` view.
 
-### Meta view
+## Meta view
 If a meta request is made for the meta view of a given file. eg:
 ```
 http://backend.endpoint/projects/<project_name>/files/<path>
@@ -929,7 +939,7 @@ This metadata could be used, for example, to attach annotations to images.
 
 Clients providing an end-user interface to the files **SHOULD** indicate if a file is not in the "ready" state, for example by placing an icon or badge next to the file.
 
-### Meta view - directories
+## Meta view - directories
 If the file is a directory and the query paramter "include_children" is included in the request then the meta view will additionally match:
 ```javascript
 {
@@ -950,7 +960,7 @@ If the file is a directory and the query paramter "include_children" is included
 ```
 where the "children" array contains the meta view for all the children of the directory. *NOTE:* the "include_children" option is not recursive, child directories will not list their children.
 
-### Meta view - raw files
+## Meta view - raw files
 If files support the raw view then the meta view should match
 ```javascript
 {
@@ -963,10 +973,10 @@ If files support the raw view then the meta view should match
 ```
 where size give the size of the file in bytes.
 
-### unsupported views
+## unsupported views
 If the client makes a request using an unkown or unsupported view then the server **MUST** respond with code 400 and error 'unsupported_file_view'.
 
-### raw file view
+## raw file view
 The "raw" file view (accssed by setting "view=raw" in the query string) provides access to the file as a stream of bytes.
 The following paramters are accepeted:
 
@@ -977,7 +987,7 @@ The following paramters are accepeted:
 
 The server **MUST** respond with mimetype `application/octet-stream'`.
 
-### uploading
+## uploading
 files are uploaded by sending a POST request to the file URL either without the query paramter "action" or with it set to the value "upload".
 The following addiontional paramters **MUST** be accepted by the server
 
@@ -1011,12 +1021,12 @@ Clients that wish to upload files are recommended to follow these steps:
 This prevents a race condition whereby multiple clients try to upload a file with the same name - in this case only one will succeed.
 Chunking allows resuming interrupted uploads as well as progress reporting to the end user.
 
-### changing metadata
+## changing metadata
 A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
 The server **MUST** respond with an empty successful response or a metadata error (or a file not found error).
 
-### deleting metadata
+## deleting metadata
 A POST request sent to a file path with query paramter `"action=delete_metadata&version=<version>"` triggers the server to delete the files metadata if the version matches.
 
 If the version does not match then the server **MUST** return http code 400, and error message "invalid_metadata_version".
@@ -1035,14 +1045,14 @@ If, for example, the current version is 1:
   has seen and incorporated client B's changes.
   It accepts the metadata, reverting client B's changes.
 
-### creating directories
+## creating directories
 If a POST request is made to a non existent path with query paramter "action=mkdir" an attempt to make a new directory is made.
 
 If there is already a file with this name the server responds with status code 400 and error message "file_already_exists".
 
 If the parent directory does not exist (or is not a directory) then the server should respond with error code 404 and error message "invalid_parent_directory"
 
-### deleting
+## deleting
 If a POST request is made to a non existent path with query paramter "action=delete" an attempt to delete the file/directory is made.
 
 Deletes on directories delete their contents and are recursive.
@@ -1051,12 +1061,12 @@ If an attempt to delete the root directory is made the server **MUST** respond w
 
 The server **MUST** return an empty successful response if the deletion succeeded.
 
-### Extra file types
+## Extra file types
 The file type (and hence supported views) of a file are determined by some unspecifed process on the backend, this may include looking at the file extension and possibly the file contents. The server **SHOULD** recognise valid files that have the correct extention and file contents. If the client requires that a file type is correctly recognised it **SHOULD** ensure that it is uploaded under a file name with the correct extension.
 
 This determination only happens once the file is made "final" by providing the "final" query paramter as part of the upload. While this is happening the file state should be "prepossessing", once complete the server will set the file status to "ready".
 
-## Tabular files
+# Tabular files
 A file type that contains tabular data (eg. excel, csv) should report its file type as tabular in its meta view:
 ```javascript
 {
@@ -1076,7 +1086,7 @@ Additionally it should support the tabular view:
 ```
 Where columns gives all of the names of the columns. and rows the number of (non-header) rows.
 
-### The tabular view
+## The tabular view
 The tabular view supports the following parameters
 
 | name     | description                                                                                                                                        | if not specified           |
@@ -1092,7 +1102,7 @@ if rowstart is passed the the end of the file then no non-header rows are return
 if cols contains invalid entries then the server **SHOULD** respond with code 400 and error 'invalid_request'.
 
 
-## Zommable image files
+# Zommable image files
 A file type that contains images that can be rescaled and zoomed. The file type, as seen in the meta view, should be:
 ```javascript
 {
@@ -1118,7 +1128,7 @@ Additionally it should support the following view:
 ```
 where width and height give the image dimensions (at the max scale level) and the metadata attributes **MAY** contain metadata extracted from the image.
 
-### The Scalable Image view
+## The Scalable Image view
 This view supports the following parameters
 
 | name         | description                                                                                                                  | if not specified                                |
