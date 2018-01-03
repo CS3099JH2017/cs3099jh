@@ -1,4 +1,4 @@
-# BE01: Authentication, Files and Projects
+# BE01: Backend basic specification
 **THIS IS A DRAFT SPECFICATION AND IS NOT FINAL**
 
 | name                                        | BE01               |
@@ -188,7 +188,7 @@ Unless otherwise noted the form of the JSON response **MUST** match either:
     "error_data": optional({})
 }
 ```
-in the case of an error. Where `error` gives a standard error name found from a specification and `error_string` some human readable error message.
+in the case of an error. Where `error` gives a standard error name found from a specification and `error_description` some human readable error message.
 
 
 Or
@@ -227,7 +227,7 @@ If a client request does not match a pattern that the specification requires tha
 }
 ```
 ## Internal errors
-At any time the server **MAY** respond to a request with response code 500 and error message "internal_server_error"
+At any time the server **MAY** respond to a request with response code 500 and return error "internal_server_error".
 
 ## Indicating protocol support
 
@@ -235,7 +235,7 @@ Upon request to the url
 ```
 http://backend.endpoint/_supported_protocols_
 ```
-Servers **MUST** respond with a response, which when unwrapped matches:
+The server's unwrapped response **MUST** match:
 ```javascript
 exactly({
     "supported": array(string),
@@ -247,7 +247,7 @@ exactly({
 
 `"required"` **MUST** be an array of specification names (for example "BE01" for this specification) on which the client may rely on the server conforming but the server **will assume** that client the client conforms to.
 
-A specification **MUST** only be listed in at most one of these arrays. Specifications **SHOULD** only be listed in required if the specification indicates at the top "can be required by servers". Clients may refuse to operate with servers who do not support or require some set of specifications however they **SHOULD** only do this when the specification indcates "can be required by clients".
+A specification **MUST** only be listed in at most one of these arrays. Specifications **SHOULD** only be listed in required if the specification indicates at the top "can be required by servers". Clients may refuse to operate with servers who do not support or require some set of specifications however they **SHOULD** only do this when the specification indicates "can be required by clients".
 
 Note that names are always two uppercase characters followed by two digits.
 
@@ -273,7 +273,7 @@ The pattern `inital_metadata` is defined to be
 }
 ```
 
-`"version"` is a monotonically increasing counter that increments by one on each metadata update. Clients should choose an appropriate namespace to store their data in: all namespaces not prefixed by an underscore are reserved. Groups are given exlusive access to the namespace given by their group name (uppercase without a dash eg. "ML1").
+`"version"` is a monotonically increasing counter that increments by one on each metadata update. Clients should choose an appropriate namespace to store their data in: all namespaces not prefixed by an underscore are reserved. Groups are given exclusive access to the namespace given by their group name (uppercase without a dash eg. "ML1").
 
 Example metadata might be
 ```javascript
@@ -292,7 +292,7 @@ Example metadata might be
 }
 ```
 
-When setting metadata the backend must ensure that it matches the `metadata` template and have a the version counter be exactly one greater than that within current metadata stored (this allows race-free read-modify-write). If there is not any metadata currently stored then no extra restriction is placed on the version field.
+When setting metadata the backend must ensure that it matches the `metadata` template and have a the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then no extra restriction is placed on the version field.
 
 If the format of metadata inside a client request is not correct the server should responsd with code 400 and error "invalid_metadata"
 
@@ -343,7 +343,7 @@ exact({
 })
 ```
 
-If the client indicates a `grant_type` options that the server does not support (not one of `"refresh_token"` or `"password"`) then the server **MUST** respond with HTTP code 400 and body
+If the client indicates a `grant_type` option that the server does not support (not one of `"refresh_token"` or `"password"`) then the server **MUST** respond with HTTP code 400 and body
 ```javascript
 exact({
     "error": "unsupported_grant_type",
@@ -391,13 +391,13 @@ If a client makes a request to a resource that it does not have access to then t
 }
 ```
 ## Logging
-### storing
+### Storing
 The server **MAY** provide a logging endpoint for all components to use.
-Any authorised client may POST to
+Any client with the `logging` privilege (see section on users) may POST to
 ```
 http://backend.endpoint/log
 ```
-with request matching
+with a request matching
 ```javascript
 array({
     "component": string,
@@ -407,11 +407,11 @@ array({
 ```
 If the server does not implement logging it **MUST** report an error "logging_not_enabled" and http error code 501.
 
-The server must store alongside each message the username of the logged in user who posted the message, and a timestamp that the message was received at. The server **MAY** selectively drop log messages (below a certain priority level, or from users who do not have a given privilege, for example) it is recommended that they expose properties to control this (see section on properties). The server **MAY** also implement log roation/expiration.
+The server must store alongside each message the username of the logged in user who posted the message, and a timestamp that the message was received at. The server **MAY** selectively drop log messages (below a certain priority level, or from users who do not have a given privilege, for example) it is recommended that it exposes properties to control this (see section on properties). The server **MAY** also implement log roation/expiration.
 
 If the request was valid and the server supports logging it should respond with an sucessful empty response.
 
-### retrieving
+### Retrieving
 Clients authorised as a user with the `admin` privilege can access
 ```
 http://backend.endpoint/log?before=<ISO 8601 date time>&after=<ISO 8601 date time>&level=<level>
@@ -433,13 +433,15 @@ array({
 `"timestamp"` should be an ISO 8601 formatted datetime. The array should be sorted newest to oldest.
 
 ## Properties
-The server may wish to expose user/progam configurable properties. 
+The server may wish to expose user/progam configurable properties, (these could control things like backup policy, or provide an option to reset the server).
 
-Clients authorised as a user with the `admin` privilege can access
+Any authorised client can access
 ```
 http://backend.endpoint/properties
 ```
-and the server **MUST** respond with a list of properties, with the unwrapped response matching
+If the server does not expose a properties endpoint it **MUST** report an error "properties_not_implemented" and http error code 501.
+
+otherwise the server **SHOULD** respond with a list of properties, with the unwrapped response matching
 ```javascript
 array({
     "id": string,
@@ -450,10 +452,12 @@ array({
         "description": string
     }),
     "read_only": boolean,
-    "type": alternative(["string", "int"]),
-    "value": alternative([string, int])
+    "type": alternative(["string", "int", "boolean"]),
+    "value": alternative([string, int, boolean])
 })
 ```
+the list of properties **MAY** depend on the privileges of the logged in user.
+
 properties providing a `"display"` key **SHOULD** be made available to the user as configuration options by the client. `"read_only"` properties should only be displayed and not given an edit option for.
 
 To update propert(ies) the client POSTS to
@@ -469,21 +473,37 @@ array({
 ```
 The backend **SHOULD** only update properties given in body.
 
-If a property that does not exist or is read only is specified the backend **SHOULD** respond with http response 400 and error "invalid_property" and set `"error_data"` to the property's name.
+If a property that does not exist or is read only the server **SHOULD** respond with http response 400 and error "invalid_property" and set `"error_data"` to the property's name.
 
 If an invalid property value is given the backend **SHOULD** respond with http response 400 and error "invalid_property_value" and set `"error_data"` to the property's name.
 
 ## Users
 The backend server supports the concept of a users.
 Users have at least:
-- A username
+- A username (an underscore prefix indicates a service account)
 - A password (this **SHOULD** be stored hashed and salted)
-- A set of privileges (the set of available privileges should include at least `admin`)
-- A set of projects and project access rights (project access rights should include, at least, `project_admin` and `regular`)
-- A metadata object that can be accessed by all, and updated by the user, "public_user_metadata"
-- A metadata object that can be accessed by all, and updated by users with the `admin` privilege, "public_admin_metadata"
-- A metadata object that can be accessed by the user, and updated by the user, "private_user_metadata"
-- A metadata object that can be accessed by users with the `admin` privilege, and updated by users with the `admin` privilege, "private_admin_metadata"
+- A set of privileges (the set of available privileges **MUST** include at least `admin` and `logging`)
+- A set of projects and project access rights (project access rights **MUST** include, at least, `project_admin` and `regular`)
+- Several metadata properties
+  - A metadata object that can be accessed by all, and updated by the user, "public_user_metadata"
+    - This could be used to store, for example, a display name and user bio
+  - A metadata object that can be accessed by all, and updated by users with the `admin` privilege, "public_admin_metadata"
+    - This could be used to store, for example, meta data about the users manager/supervisor, or that the account should be hidden from listings.
+  - A metadata object that can be accessed by the user, and updated by the user, "private_user_metadata"
+    - This could be used to store, for example, user interface preferences.
+  - A metadata object that can be accessed by users with the `admin` privilege, and updated by users with the `admin` privilege, "private_admin_metadata"
+    - This could be used to store, for example, a flag indicating that the account cannot be deleted.
+
+### Service accounts
+some users may be "service accounts" which are accounts intended to only be used by a server not acting on behalf of an end-user. From the servers perspective nothing distinguishes service accounts from normal accounts.
+
+From a clients perspective a service account is an account with a username that begins with an underscore.
+
+All groups have the reserved right to the service account formed by prefixing their group name (uppercase without a dash) with an underscore eg. "_ML1".
+
+If external servers require service accounts it is their responsibility to create and securely store the credentials. Typically during set-up these servers will require admin credentials in order to perform the creation but **SHOULD NOT** save these admin credentials.
+
+Clients presenting an interface **SHOULD** at least warn the end-user before altering/deleting these accounts.
 
 ### Listing
 Clients can access
@@ -677,14 +697,27 @@ or if the user is the current user, 400 and error message "invalid_user",
 
 or if the user was deleted a successfull empty response.
 
+### User Properties
+The backend may wish to expose additional configuration options for individual users. the URL endpoint for this is:
+```
+http://backend.endpoint/users/<username>/properties
+```
+otherwise the behaviour is exactly the same as the global properties endpoint.
+These could be used to implement, for example, per user quotas or provide an option to expire all active login tokens.
+
+
 ## Projects
 The backend server supports the concept of a project.
 Projects have at least:
 - A fixed name
-- A set of users and project access rights (project access rights should include, at least, `project_admin` and `regular`)
+- A set of users and project access rights (project access rights **MUST** include, at least, `project_admin` and `regular`)
 - Public metadata object that is visible to all users but only editable by users with the `project_admin` access right, "public_metadata"
 - Private metadata object that is visible to all users with at least the `regular` access right but only editable by users with the `project_admin` access right, "private_metadata".
 - Private metadata object that is only visible and editable users with the `project_admin` access right, "admin_metadata".
+
+project names starting with an underscore are reserved. It is highly recommended that interfaces prevent end-users from creating projects with reserved names. The client **MAY** also choose to omit them from project listings presented to the end user (although direct access via URL could be useful). The client **SHOULD** at the very least issue a clear warning message before allowing an end-user to delete a reserved project.
+
+Groups are given exlusive access to projects that are prefixed by an underscore and then then their group name (uppercase without a dash). eg "_ML1_internal_data".
 
 ### Listing
 All clients can access
@@ -754,7 +787,7 @@ The server **MUST** either send a successful response without data,
 
 or return an error "invalid_project" and response code 400,
 
-or return an error "project_already_exists" and response code 400 if the user exists already.
+or return an error "project_already_exists" and response code 400 if the project exists already.
 
 or return a metadata error.
 
@@ -772,6 +805,8 @@ with body matching
 }
 ```
 (note that there is no need to indicate the project_name inside the request body)
+If the user does not have the `admin` privilege and the `"admin_metadata"` was specified in the request the server should return an unauthorised response (see the section on oauth).
+
 The server **SHOULD** only update the attributes listed in the request.
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
 
@@ -811,13 +846,23 @@ The server **MUST** respond "project_not_found" and response code 404 if the pro
 
 The server **MUST** respond "user_not_found" and response code 404 if the user cannot be found.
 
-The serve **MUST** respond with a successful empty response if the access level was updated.
+The server **MUST** respond with a successful empty response if the access level was updated.
+
+### Project Properties
+The backend may wish to expose additional configuration options for individual projects. the URL endpoint for this is:
+```
+http://backend.endpoint/projects/<project_name>/properties
+```
+otherwise the behaviour is exactly the same as the global properties endpoint.
+These could be used to implement, for example, per project storage quotas or provide an option to log all file accesses.
 
 ## File access
 **NOTE:** all file operations require that clients have at least `regular` access to the project.
 
 ### File paths
-Each project has associated with a file store. Files are organised into directories. Valid File/directory names are `UTF-8` strings that do not contain "/" or "\". "." and ".." are **not** valid file/directory names.
+Each project has associated with a file store. Files are organised into directories. Valid File/directory names are `UTF-8` strings that do not contain "/" or "\\"
+
+"\." and "\.\." are **not** valid file/directory names.
 
 Valid paths consist of valid file names seperated by a single "/".
 
@@ -825,7 +870,7 @@ If an invalid path is presented the server **SHOULD** with response code 400 and
 
 The path "" (empty string) refers to the root directory of the project.
 
-The path "_reserved" is reserved for a directory. All subpaths are all reserved. Groups are given exlusive access to the subdirectory given by their group name (uppercase without a dash) eg. "_reserved/ML1". Clients **SHOULD** hide the reserved directory from end-users and **MAY** hide the directory from listings (although allowing access with the direct path may be helpful).
+The path "_reserved" is reserved for a directory. All subpaths are all reserved. Groups are given exlusive access to the subdirectory given by their group name (uppercase without a dash) eg. "_reserved/ML1". Clients **MAY** hide the reserved directory from end-users and **MAY** hide the directory from listings (although allowing access with the direct path may be helpful).
 
 a file path `<path>` inside project `<project_name>` is accessed under the URL
 ```
@@ -842,7 +887,7 @@ If a request (that is not a create request) is made for a path/id that does not 
 ### views
 Files are accessed under a given view specifed by setting the query parameter `view=<view_name>`. All files support at least the `"meta"` view. If a view is not specified then the `"meta"` view assumed.
 
-All no directory files support access to the raw bytes with the `"raw"` view.
+All files that are not directories support access to the raw bytes with the `"raw"` view.
 
 ### Meta view
 If a meta request is made for the meta view of a given file. eg:
@@ -856,14 +901,33 @@ the server *MUST* respond with a unwrapped response matching
     "file_name": string,
     "id": string,
     "supported_views": {},
-    "type": string
+    "type": string,
+    "metadata": optional(metadata),
+    "status": alternative([
+        "uploading",
+        "preprocessing",
+        "ready"
+    ])
 }
 ```
 `"file_path"` gives the full path to the file, `"file_name"` gives this path without any parent directories (eg the basename of the path).
 
-`"supported_views"` is an object who's keys correspond to the supported views and values correspond to paramters supported by that view.
+`"supported_views"` is an object who's keys correspond to the supported views and values correspond to additional data provided by that view.
 
 `"type"` is a file type. The type "generic" is for files who's type is not known and support only "meta" and "raw" views. The type "directory" is for directories.
+
+`"metadata"` provides optional metadata for the file, this is client controlled and if the file has no metadata should not be present.
+
+This metadata could be used, for example, to attach annotations to images.
+
+`"status"` gives the current status of the file:
+- When a file is first created/written to its status becomes "uploading". (it still supports the "raw" view)
+- After the client has indicated that the upload is final (see the upload section) the state changes to "preprocessing" during which the server **SHOULD** attempt to determine a more specific file type and supported views.
+- Once the server has finalised this process the status changes to "ready".
+- The server **MAY** deny writes when file is not in the "uploading" state.
+- Clients **MAY** keep a file in the uploading state indefinitely, although this should not be done for end-user facing files, and generally only files in the "_reserved" directory.
+
+Clients providing an end-user interface to the files **SHOULD** indicate if a file is not in the "ready" state, for example by placing an icon or badge next to the file.
 
 ### Meta view - directories
 If the file is a directory and the query paramter "include_children" is included in the request then the meta view will additionally match:
@@ -874,7 +938,13 @@ If the file is a directory and the query paramter "include_children" is included
         "file_name": string,
         "id": string,
         "supported_views": {},
-        "type": string
+        "type": string,
+        "metadata": optional(metadata),
+        "status": alternative([
+            "uploading",
+            "preprocessing",
+            "ready"
+        ])
     })
 }
 ```
@@ -914,16 +984,24 @@ The following addiontional paramters **MUST** be accepted by the server
 | name      | description                                                                                                                                                | if not specified                                                                      |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | overwrite | allow file overwrites - do not cause an error if the file already exists.                                                                                  | exit with error code 400 and message "file_already_exists" if the file already exists |
-| offset    | seek to the specified offset in the file before writing - if the file has to be extended to meek this request then the new space will be filled with zeros | data is written to the start of the file                                              |
+| offset    | seek to the specified offset in the file before writing - if the file has to be extended to meet this request then the new space will be filled with zeros | data is written to the start of the file                                              |
 | truncate  | after writing the size of the file is reduced so that the last byte in the file is the last byte written                                                   | file size never shrinks                                                               |
+| final     | If this is the last write to file, **SHOULD** trigger the server to change the file status and do some prepossessing                                       | assumed not the final upload                                                          |
 
 **NOTE:** A file can be truncated to a give size by issuing an empty POST request with paramters `overwrite=true&offset=<new_size>&truncate=true`
 
 If the parent directory does not exist (or is not a directory) the server **MUST** respond with code 404 and error message "invalid_parent_directory".
 
+If the file is not in the "uploading" state the server **MAY** respond with code 400 and error message "invalid_file_state".
+
 If the write was successfull the server **MUST** respond with an empty successful response.
 
 **NOTE: Chunked Uploads** for large files clients are recommended to, where possible, split the file into fixed size chunks (eg. 4Mib) and upload each chunk individually. This allows resuming interrupt uploads as well as progress reporting to the end user.
+
+### changing metadata
+A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
+Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
+The server **MUST** respond with an empty successful response or a metadata error (or a file not found error).
 
 ### creating directories
 If a POST request is made to a non existent path with query paramter "action=mkdir" an attempt to make a new directory is made.
@@ -939,13 +1017,15 @@ Deletes on directories delete their contents and are recursive.
 
 If an attempt to delete the root directory is made the server **MUST** respond with error code 400 and error message "invalid_operation".
 
-If the file does not exist the server should respond with code 404 and message "file_not_found"
+The server **MUST** return an empty successful response if the deletion succeeded.
 
 ### Extra file types
-The file type (and hence supported views) of a file are determined by some unspecifed process on the backend, this may include looking at the file extension and possibly the file contents. The server **SHOULD** recognise valid files that have the correct extention and file contents. If the client requires that a file type is correctly recognised it **SHOULD** ensure that it is uploaded under a file name with the correct extention.
+The file type (and hence supported views) of a file are determined by some unspecifed process on the backend, this may include looking at the file extension and possibly the file contents. The server **SHOULD** recognise valid files that have the correct extention and file contents. If the client requires that a file type is correctly recognised it **SHOULD** ensure that it is uploaded under a file name with the correct extension.
+
+This determination only happens once the file is made "final" by providing the "final" query paramter as part of the upload. While this is happening the file state should be "prepossessing", once complete the server will set the file status to "ready".
 
 ## Tabular files
-A file type that contains tabular data (eg. excel, csv) should reports its file type as tabular in its meta view:
+A file type that contains tabular data (eg. excel, csv) should report its file type as tabular in its meta view:
 ```javascript
 {
     "type": "tabular"
@@ -975,7 +1055,7 @@ The tabular view supports the following parameters
 
 The mimetype of a successful response *MUST* be "text/csv". The CSV response **always** includes the header row.
 
-if rowstart is passed then the end of the file then no non-header rows are returned.
+if rowstart is passed the the end of the file then no non-header rows are returned.
 
 if cols contains invalid entries then the server **SHOULD** respond with code 400 and error 'invalid_request'.
 
@@ -995,15 +1075,16 @@ Additionally it should support the following view:
             "width": integer,
             "height": integer,
             "channels": array({
+                "channel_id": string,
                 "channel_name": string,
-                "meta": metadata
+                "metadata": optional({})
             }),
-            "meta": metadata
+            "metadata": optional({})
         }
     }
 }
 ```
-where width and height give the image dimensions (at the max scale level) and the meta attributes contain metadata extracted from the image. (under an appropriate namespace).
+where width and height give the image dimensions (at the max scale level) and the metadata attributes **MAY** contain metadata extracted from the image.
 
 ### The Scalable Image view
 This view supports the following parameters
@@ -1022,4 +1103,4 @@ The mimetype of a successful response *MUST* be "image/png".
 
 If the region specified extends outside the image the server should fill in the remainder of the image with the color `#000000ff`.
 
-x_offset, y_offset, width and height should all be a multiple of zoom_levl otherwise the server **MAY** respond with response code 400 and error 'invalid_request'.
+x_offset, y_offset, width and height **SHOULD** all be a multiple of zoom_level otherwise the server **MAY** respond with response code 400 and error 'invalid_request'.
