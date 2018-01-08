@@ -3,7 +3,7 @@
 
 | name                       | BE01               |
 |----------------------------|--------------------|
-| version                    | 0.1.2              |
+| version                    | 0.1.3              |
 | status                     | proposal           |
 | author                     | Ryan Wilson (rw86) |
 | serving component(s)       | backend            |
@@ -17,15 +17,45 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Changelog
 ### Version 0.1
-First draft
+View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v0.1.md.html)
+
+- First draft
 
 ### Version 0.1.1
-Added an API to list availble privileges.
+View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v0.1.1.md.html)
+
+- Added an API to list availble privileges.
 
 ### Version 0.1.2
-Added an API to list availble project roles.
-Clarified permissions required to edit project grants.
-Changed endpoint for listing user privileges
+View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v0.1.2.md.html)
+
+- Added an API to list availble project roles.
+- Clarified permissions required to edit project grants.
+- Changed endpoint for listing user privileges
+
+### Version 0.1.3
+- Removed the redundant "invalid_metadata" error.
+- Moved some sections.
+- Fixed int type in properties.
+- Relaxed some **MUST** constraints to **SHOULD**
+- Creator of a project automatically gets `project_admin` access.
+- Made pattern for self-update stricter (made requests specifying unwritable metadata invalid).
+- Changed error for when "admin_metadata" is specified in an update project request when the user is not a project admin (is now consistent with behaviour for users).
+- Filenames must be at least a single character.
+- Added an explict error for grant requests with an invalid access level.
+- Added an explict error for updating user privileges with an privilege.
+- There must not be an access level "none".
+- Allow backend to impose path length limits.
+- Added an error when attempting to write to a directory.
+- Directories are always in the "ready" state.
+- Clarified behaviour for object names with special characters
+- Newly created files now return their id as part of the response to the creation request.
+- Files now always have metadata, removed the delete metadata request.
+- Clarified that datetimes are in UTC for logging
+- Log messages can now be any JSON object
+- Added optional "real_width" and "real_height" attributes to zoomable images
+- File uploads by id must specify overwrite
+- Moving and copying files
 
 # Foreword: URL
 
@@ -190,9 +220,83 @@ but not
     "a": "thing"
 }
 ```
+
+# General notes
+## Names
+Names that identify objects (users, projects, files) should be non-empty and should be valid unicode strings that do not contain the "/" character (except for paths, but not path components) or control characters from ISO 6429 C0 and C1. In the case that the client sends an invalid name as part of a URL the server behaviour is undefined (due to limitations of servers/frameworks in reliably handling such strings).
+
+The client **MUST** percent encode non url-safe characters in a name when sending as part of a URL.
+
+## Atomicity of updates
+When an update is issued that causes an error (eg. due to invalid data) the server **MUST NOT** have partialy applied attributes in the update. IE. updates are atomic.
+
+## Metadata
+Several objects have associated metadata objects for clients to use. This metadata **MUST** match
+
+```javascript
+exact({
+    "version": integer,
+    "namespaces": {}
+})
+```
+(this will be refered to as `metadata` within patterns)
+
+The pattern `inital_metadata` is defined to be 
+```javascript
+{
+    "version": 1,
+    "namespaces": {}
+}
+```
+
+`"version"` is a monotonically increasing counter that increments by one on each metadata update. Clients should choose an appropriate namespace to store their data in: all namespaces not prefixed by an underscore are reserved. Groups are given exclusive access to the namespace given by their group name (uppercase without a dash eg. "ML1").
+
+Example metadata might be
+```javascript
+{
+    "version": 12,
+    "namespaces": {
+        "ML1": {
+            "model_store_dir": "_reserved/ML1/models"
+        },
+        "HCI3": {
+            "display_name": "Microscopy analysis",
+            "creation_date": "...",
+            "created_by": "..."
+        }
+    }
+}
+```
+
+When setting metadata the backend must ensure that it matches the `metadata` template (this is ensured as part of validating the request, the invalid request error is used for values that don't match the request template, see the notes on "Basic Response") and that the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then the version field must be 1.
+
+If the version number is not correct the server **SHOULD** respond with 400, "invalid_metadata_version" in this case the client should retry (starting again from read).
+
+# Indicating protocol support
+
+Upon request to the url
+```
+http://backend.endpoint/_supported_protocols_
+```
+The server's unwrapped response **MUST** match:
+```javascript
+exactly({
+    "supported": array(string),
+    "required": array(string)
+})
+```
+
+`"supported"` **SHOULD** be an array of specification names (for example "BE01" for this specification) for specifications on which the client may rely on the server conforming to. **NOTE** that the *client* is not required to conform to the listed specification.
+
+`"required"` **MUST** be an array of specification names (for example "BE01" for this specification) on which the client may rely on the server conforming but the server **will assume** that client the client conforms to.
+
+A specification **MUST** only be listed in at most one of these arrays. Specifications **SHOULD** only be listed in required if the specification indicates at the top "can be required by servers". Clients may refuse to operate with servers who do not support or require some set of specifications however they **SHOULD** only do this when the specification indicates "can be required by clients".
+
+Note that names are always two uppercase characters followed by two digits.
+
 # Basic Response
 Unless otherwise noted requests and responses are made in JSON, and the servers `Content-Type` header should indicate a mimetype of `application/json`. Requests and responses **SHOULD** be encoded in `UTF-8`.
-v
+
 Unless otherwise noted the form of the JSON response **MUST** match either:
 ```javascript
 {
@@ -240,77 +344,8 @@ If a client request does not match a pattern that the specification requires tha
     "error_description": "The client made an invalid request."
 }
 ```
-# Internal errors
+## Internal errors
 At any time the server **MAY** respond to a request with response code 500 and return error "internal_server_error".
-
-# Indicating protocol support
-
-Upon request to the url
-```
-http://backend.endpoint/_supported_protocols_
-```
-The server's unwrapped response **MUST** match:
-```javascript
-exactly({
-    "supported": array(string),
-    "required": array(string)
-})
-```
-
-`"supported"` **SHOULD** be an array of specification names (for example "BE01" for this specification) for specifications on which the client may rely on the server conforming to. **NOTE** that the *client* is not required to conform to the listed specification.
-
-`"required"` **MUST** be an array of specification names (for example "BE01" for this specification) on which the client may rely on the server conforming but the server **will assume** that client the client conforms to.
-
-A specification **MUST** only be listed in at most one of these arrays. Specifications **SHOULD** only be listed in required if the specification indicates at the top "can be required by servers". Clients may refuse to operate with servers who do not support or require some set of specifications however they **SHOULD** only do this when the specification indicates "can be required by clients".
-
-Note that names are always two uppercase characters followed by two digits.
-
-# General updates
-When an update is issued that causes an error (eg. due to invalid data) the server **MUST NOT** have partialy applied attributes in the update. IE. updates are atomic.
-
-# Metadata updates
-Several objects have associated metadata objects for clients to use. This metadata **MUST** match
-
-```javascript
-exact({
-    "version": integer,
-    "namespaces": {}
-})
-```
-(this will be refered to as `metadata` within patterns)
-
-The pattern `inital_metadata` is defined to be 
-```javascript
-{
-    "version": 1,
-    "namespaces": {}
-}
-```
-
-`"version"` is a monotonically increasing counter that increments by one on each metadata update. Clients should choose an appropriate namespace to store their data in: all namespaces not prefixed by an underscore are reserved. Groups are given exclusive access to the namespace given by their group name (uppercase without a dash eg. "ML1").
-
-Example metadata might be
-```javascript
-{
-    "version": 12,
-    "namespaces": {
-        "ML1": {
-            "model_store_dir": "_reserved/ML1/models"
-        },
-        "HCI3": {
-            "display_name": "Microscopy analysis",
-            "creation_date": "...",
-            "created_by": "..."
-        }
-    }
-}
-```
-
-When setting metadata the backend must ensure that it matches the `metadata` template and that the version counter be exactly one greater than the one in the *current* version of the metadata (this allows race-free read-modify-write). If there is not any metadata currently stored then the version field must be 1.
-
-If the format of metadata inside a client request is not correct the server should responsd with code 400 and error "invalid_metadata"
-
-If the version number is not correct the server should respond with 400, "invalid_metadata_version" in this case the client should retry (starting again from read).
 
 # OAuth
 **Note that responses here do not exactly follow the JSON response format**
@@ -416,21 +451,21 @@ with a request matching
 array({
     "component": string,
     "level": alternative(["info", "security", "warning", "error", "critical"]),
-    "value": {}
+    "value": anything
 })
 ```
 If the server does not implement logging it **MUST** report an error "logging_not_enabled" and http error code 501.
 
 The server must store alongside each message the username of the logged in user who posted the message, and a timestamp that the message was received at. The server **MAY** selectively drop log messages (below a certain priority level, or from users who do not have a given privilege, for example) it is recommended that it exposes properties to control this (see section on properties). The server **MAY** also implement log roation/expiration.
 
-If the request was valid and the server supports logging it should respond with an sucessful empty response.
+If the request was valid and the server supports logging it **SHOULD** respond with an sucessful empty response.
 
 ## Retrieving
 Clients authorised as a user with the `admin` privilege can access
 ```
 http://backend.endpoint/log?before=<datetime>&after=<datetime>&level=<level>
 ```
-Datetimes are formatted according to ISO 8601.
+Datetimes are formatted according to ISO 8601 in UTC.
 
 To retrieve log messages in the given date range and at log level `<level>` or above. Any parameter can be ommited in which case the given filter (before, after or log level) is not applied.
 
@@ -441,17 +476,18 @@ otherwise the serer response should match
 array({
     "component": string,
     "level": alternative(["info", "security", "warning", "error", "critical"]),
-    "value": {},
+    "value": anything,
     "username": string,
     "timestamp": string
 })
 ```
-`"timestamp"` should be an ISO 8601 formatted datetime. The array should be sorted newest to oldest.
+`"timestamp"` should be an ISO 8601 formatted datetime in UTC. The array should be sorted newest to oldest.
 
 # Properties
 The server may wish to expose user/progam configurable properties, (these could control things like backup policy, or provide an option to reset the server).
 
-Any authorised client can access
+## Listing
+Any authenticated client can access
 ```
 http://backend.endpoint/properties
 ```
@@ -468,14 +504,15 @@ array({
         "description": string
     }),
     "read_only": boolean,
-    "type": alternative(["string", "int", "boolean"]),
-    "value": alternative([string, int, boolean])
+    "type": alternative(["string", "integer", "boolean"]),
+    "value": alternative([string, integer, boolean])
 })
 ```
 the list of properties **MAY** depend on the privileges of the logged in user.
 
 properties providing a `"display"` key **SHOULD** be made available to the user as configuration options by the client. `"read_only"` properties should only be displayed and not given an edit option for.
 
+## Setting
 To update propert(ies) the client POSTS to
 ```
 http://backend.endpoint/properties?action=update
@@ -484,7 +521,7 @@ with body
 ```javascript
 array({
     "id": string,
-    "value": alternative([string, int, boolean])
+    "value": alternative([string, integer, boolean])
 })
 ```
 The backend **SHOULD** only update properties given in body.
@@ -658,6 +695,8 @@ the metadata attributes **SHOULD** be assumed to be `inital_metadata` if not pre
 
 The server **MUST** either send a successful response without data,
 
+If an invalid privilege is specified the server **SHOULD** return http code 400 and error "invalid_privilege".
+
 or return an error "invalid_user" and response code 400. This may happen, for example, if the password does not meet some complexity requirements or if an invalid privilege was specified
 
 or return an error "user_already_exists" and response code 400 if the user exists already.
@@ -685,6 +724,8 @@ Metadata **MUST** be processed in accordance with the "metadata" section of this
 
 The server **MUST** either send a successful response without data,
 
+If an invalid privilege is specified the server **SHOULD** return http code 400 and error "invalid_privilege".
+
 or return an error "invalid_user" and response code 400. This may happen, for example, if the password does not meet some complexity requirements or if an invalid privilege was specified
 
 or return an error "user_not_found" and response code 404 if the user cannot be found.
@@ -704,7 +745,9 @@ with body matching
         "new": string
     }),
     "public_user_metadata": optional(metadata),
-    "private_user_metadata": optional(metadata)
+    "private_user_metadata": optional(metadata),
+    "public_admin_metadata": not_present,
+    "private_admin_metadata": not_present
 }
 ```
 The server should only attempt to update the attributes specified in the request.
@@ -769,6 +812,8 @@ array({
 
 `"internal"` indicates a role that should not be (by default) displayed or offered as a choice when assigning roles.
 
+A role **MUST NOT** be named "none".
+
 ## Listing
 All clients can access
 ```
@@ -788,9 +833,9 @@ array({
     "admin_metadata": optional(metadata)
 })
 ```
-`"private_metadata"` **MUST** only be present when the client has at least `regular` access to the given projects.
+`"private_metadata"` **SHOULD** only be present when the client has at least `regular` access to the given projects.
 
-`"admin_metadata"` **MUST** only be present when the client has at least `project_admin` access to the given projects.
+`"admin_metadata"` **SHOULD** only be present when the client has at least `project_admin` access to the given projects.
 
 ## Specific project
 Clients that have at least `regular` access to a given project can request
@@ -811,7 +856,7 @@ and the server **MUST** respond with details of the particular project if it exi
     "admin_metadata": optional(metadata)
 }
 ```
-`"admin_metadata"` **MUST** only be present when the client has at least `project_admin` access to the given projects.
+`"admin_metadata"` **SHOULD** only be present when the client has at least `project_admin` access to the given projects.
 
 or if the project does not exist it **MUST** return HTTP response code 404 and a `"project_not_found"` error.
 
@@ -832,6 +877,8 @@ with body matching
 the metadata attributes **SHOULD** be assumed to be `inital_metdata` if not present in the request.
 
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
+
+If the project is created then the current user **SHOULD** be given `project_admin` access to the project.
 
 The server **MUST** either send a successful response without data,
 
@@ -855,7 +902,7 @@ with body matching
 }
 ```
 (note that there is no need to indicate the project_name inside the request body)
-If the user does not have the `admin` privilege and the `"admin_metadata"` was specified in the request the server should return an unauthorised response (see the section on oauth).
+If the user does not have the `admin` privilege and the `"admin_metadata"` was specified in the request the server should return an invalid request error.
 
 The server **SHOULD** only update the attributes listed in the request.
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
@@ -890,7 +937,7 @@ with request matching
     "access_level": string
 }
 ```
-where access level is a valid access level or the value `"none"` to remove access.
+where access level is a valid access level or the value `"none"` to remove access. If "access_level" does not meet these criterion then the server **SHOULD** return an error "invalid_access_level" with status code 400.
 
 The server **MUST** respond "project_not_found" and response code 404 if the project cannot be found.
 
@@ -910,13 +957,16 @@ These could be used to implement, for example, per project storage quotas or pro
 **NOTE:** all file operations require that clients have at least `regular` access to the project.
 
 ## File paths and ids
-Each project has associated with a file store. Files are organised into directories. Valid File/directory names are `UTF-8` strings that do not contain `"/"` or `"\"`
+Each project has associated with a file store. Files are organised into directories. Valid File/directory names are unicode strings that do not contain `"/"` or `"\"`. Valid file names must be at least a single character long.
 
 `"."` and `".."` are **not** valid file/directory names.
 
-Valid paths consist of valid file names seperated by a single `"/"`.
+The server **MAY** consider names containing control characters from C0 and C1 as defined by in ISO 6429 to be invalid. When these characters are specified as part of a URL the server behaviour is undefined.
 
-If an invalid path is presented the server **SHOULD** with response code 400 and error "invalid_path".
+Valid paths consist of valid file names seperated by a single `"/"`.
+The server **MAY** impose a limit on the length of path names but this **SHOULD** be no smaller than 1024 unicode characters, paths longer than this **MAY** be considered invalid by the server.
+
+If an invalid path is presented the server **SHOULD** return response code 400 and error "invalid_path".
 
 The path "" (empty string) refers to the root directory of the project.
 
@@ -936,7 +986,7 @@ If a request (that is not a create request) is made for a path/id that does not 
 
 The server **MUST NOT** reuse file ids - in particular if a file is deleted and then recreated it's id **MUST** change. Clients are recommended to first access a file by path, but subsequent accesses during the same session should be made by id. This prevents a deleted and then recreated file from causing races.
 
-## views
+## Views
 Files are accessed under a given view specifed by setting the query parameter `view=<view_name>`. All files support at least the `"meta"` view. If a view is not specified then the `"meta"` view assumed.
 
 All files that are not directories support access to the raw bytes with the `"raw"` view.
@@ -954,7 +1004,7 @@ the server *MUST* respond with a unwrapped response matching
     "id": string,
     "supported_views": {},
     "type": string,
-    "metadata": optional(metadata),
+    "metadata": metadata,
     "status": alternative([
         "uploading",
         "preprocessing",
@@ -968,7 +1018,7 @@ the server *MUST* respond with a unwrapped response matching
 
 `"type"` is a file type. The type "generic" is for files who's type is not known and support only "meta" and "raw" views. The type "directory" is for directories.
 
-`"metadata"` provides optional metadata for the file, this is client controlled and if the file has no metadata should not be present.
+`"metadata"` provides metadata for the file, this is client controlled. When a file is first created the value of its metadata **MUST** be `inital_metdata`.
 
 This metadata could be used, for example, to attach annotations to images.
 
@@ -976,7 +1026,7 @@ This metadata could be used, for example, to attach annotations to images.
 - When a file is first created/written to its status becomes "uploading". (it still supports the "raw" view)
 - After the client has indicated that the upload is final (see the upload section) the state changes to "preprocessing" during which the server **SHOULD** attempt to determine a more specific file type and supported views.
 - Once the server has finalised this process the status changes to "ready".
-- The server **MAY** deny writes when file is not in the "uploading" state.
+- The server **SHOULD** deny writes when file is not in the "uploading" state.
 - Clients **MAY** keep a file in the uploading state indefinitely, although this should not be done for end-user facing files, and generally only files in the "_reserved" directory.
 
 Clients providing an end-user interface to the files **SHOULD** indicate if a file is not in the "ready" state, for example by placing an icon or badge next to the file.
@@ -991,7 +1041,7 @@ If the file is a directory and the query paramter "include_children" is included
         "id": string,
         "supported_views": {},
         "type": string,
-        "metadata": optional(metadata),
+        "metadata": metadata,
         "status": alternative([
             "uploading",
             "preprocessing",
@@ -1015,10 +1065,10 @@ If files support the raw view then the meta view should match
 ```
 where size give the size of the file in bytes.
 
-## unsupported views
+## Unsupported views
 If the client makes a request using an unkown or unsupported view then the server **MUST** respond with code 400 and error 'unsupported_file_view'.
 
-## raw file view
+## Raw file view
 The "raw" file view (accssed by setting "view=raw" in the query string) provides access to the file as a stream of bytes.
 The following paramters are accepeted:
 
@@ -1029,16 +1079,16 @@ The following paramters are accepeted:
 
 The server **MUST** respond with mimetype `application/octet-stream'`.
 
-## uploading
+## Uploading
 files are uploaded by sending a POST request to the file URL either without the query paramter "action" or with it set to the value "upload".
 The following addiontional paramters **MUST** be accepted by the server
 
-| name      | description                                                                                                                                                | if not specified                                                                      |
-|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| overwrite | allow file overwrites - do not cause an error if the file already exists.                                                                                  | exit with error code 400 and message "file_already_exists" if the file already exists |
-| offset    | seek to the specified offset in the file before writing - if the file has to be extended to meet this request then the new space will be filled with zeros | data is written to the start of the file                                              |
-| truncate  | after writing the size of the file is reduced so that the last byte in the file is the last byte written                                                   | file size never shrinks                                                               |
-| final     | If this is the last write to file, **SHOULD** trigger the server to change the file status and do some prepossessing                                       | assumed not the final upload                                                          |
+| name      | description                                                                                                                                                                   | if not specified                                                                      |
+|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| overwrite | allow file overwrites - do not cause an error if the file already exists. When accessing a file by id this paramter **MUST** be specified otherwise the request is not valid. | exit with error code 400 and message "file_already_exists" if the file already exists |
+| offset    | seek to the specified offset in the file before writing - if the file has to be extended to meet this request then the new space will be filled with zeros                    | data is written to the start of the file                                              |
+| truncate  | after writing the size of the file is reduced so that the last byte in the file is the last byte written                                                                      | file size never shrinks                                                               |
+| final     | If this is the last write to file, **SHOULD** trigger the server to change the file status and do some prepossessing                                                          | assumed not the final upload                                                          |
 
 **NOTE:** A file can be truncated to a give size by issuing an empty POST request with paramters `overwrite=true&offset=<new_size>&truncate=true`
 
@@ -1046,11 +1096,20 @@ The following addiontional paramters **MUST** be accepted by the server
 
 **NOTE:** File operations on overlapping regions (or when both operations require extending the file) are not required to be atomic.
 
-If the parent directory does not exist (or is not a directory) the server **MUST** respond with code 404 and error message "invalid_parent_directory".
+If the parent directory does not exist (or is not a directory) the server **SHOULD** respond with code 404 and error message "invalid_parent_directory".
 
-If the file is not in the "uploading" state the server **MAY** respond with code 400 and error message "invalid_file_state".
+If the specified file is a directory and the request includes the overwrite parameter then the server **SHOULD** respond with code 400 and error message "not_a_file". If the request does not specify overwrite then the response should be "file_already_exists" as specified in default behaviour for the overwrite parameter.
 
-If the write was successfull the server **MUST** respond with an empty successful response.
+If the file is not in the "uploading" state the server **SHOULD** respond with code 400 and error message "invalid_file_state".
+
+If the write was successfull the server **MUST** respond with a response which when unwrapped matches.
+```javascript
+{
+    "id": string,
+    "created": boolean
+}
+```
+where "id" gives the id of the file, and "created" indicates that the file did not previously exist.
 
 **NOTE: Uploading files**
 Clients that wish to upload files are recommended to follow these steps:
@@ -1063,38 +1122,31 @@ Clients that wish to upload files are recommended to follow these steps:
 This prevents a race condition whereby multiple clients try to upload a file with the same name - in this case only one will succeed.
 Chunking allows resuming interrupted uploads as well as progress reporting to the end user.
 
-## changing metadata
+## Changing metadata
 A POST request sent to a file path with query paramter `"action=set_metadata"` triggers the server to change the files client-specified metadata.
+The client request should match the `metadata` template.
+
 Metadata **MUST** be processed in accordance with the "metadata" section of this specification.
 The server **MUST** respond with an empty successful response or a metadata error (or a file not found error).
 
-## deleting metadata
-A POST request sent to a file path with query paramter `"action=delete_metadata&version=<version>"` triggers the server to delete the files metadata if the version matches.
-
-If the version does not match then the server **MUST** return http code 400, and error message "invalid_metadata_version".
-
-If successful server **MUST** respond with an empty successful response.
-
-**NOTE**
-Deleting metadata inherently introduces race conditions. It is **much** preferred that clients simply upload a new, empty, metadata object.
-
-If, for example, the current version is 1:
-- client A reads the metadata and assembles the modified object
-- client B deletes the metadata
-- client B add new metadata the version is now, again, 1
-- client A uploads its new metadata specifying version 2
-- The server checks the version matches and assumes that client A
-  has seen and incorporated client B's changes.
-  It accepts the metadata, reverting client B's changes.
-
-## creating directories
+## Creating directories
 If a POST request is made to a non existent path with query paramter "action=mkdir" an attempt to make a new directory is made.
 
 If there is already a file with this name the server responds with status code 400 and error message "file_already_exists".
 
-If the parent directory does not exist (or is not a directory) then the server should respond with error code 404 and error message "invalid_parent_directory"
+If the parent directory does not exist (or is not a directory) then the server **SHOULD** respond with error code 404 and error message "invalid_parent_directory".
 
-## deleting
+Directories are always in the "ready" state.
+
+If directory creation is successfull the server's unwrapped response **MUST** match
+```javascript
+{
+    "id": string
+}
+```
+where id gives the id of the newly created directory.
+
+## Deleting
 If a POST request is made to a non existent path with query paramter "action=delete" an attempt to delete the file/directory is made.
 
 Deletes on directories delete their contents and are recursive.
@@ -1102,6 +1154,61 @@ Deletes on directories delete their contents and are recursive.
 If an attempt to delete the root directory is made the server **MUST** respond with error code 400 and error message "invalid_operation".
 
 The server **MUST** return an empty successful response if the deletion succeeded.
+
+## Moving
+A file can be moved by making a post request to the file path with "action=move" and request body matching
+
+```javascript
+alternative([
+    {
+        "id": string,
+        "path": not_present
+    },
+    {
+        "id": not_present,
+        "path": string
+    }
+])
+```
+If a path is given the file may or may not currently exist, but the parent directory **MUST** exist - if it does not (or is not a directory) then the server **SHOULD** respond with error code 404 and error message "invalid_parent_directory".
+
+If an id is given it **MUST** exist - the server **SHOULD** respond with a typical 404 and "file_not_found" response if it does not.
+
+The effect is as follows (atomically):
+
+- The to file is deleted if it currently exists
+- The from file is relocated to the to files old path. It maintains its ID, metadata, status file contents etc.
+- The from file is no long availble under its old path
+
+If successful the server **SHOULD** return a successful empty response.
+
+## Copying
+A file (that is not a directory) can be copied by making a post request to the file path with "action=copy" and request body matching
+
+```javascript
+alternative([
+    {
+        "id": string,
+        "path": not_present
+    },
+    {
+        "id": not_present,
+        "path": string
+    }
+])
+```
+If a directory is specified the server **SHOULD** respond with http status 400 and error type "not_a_file".
+
+If a path is given the file may or may not currently exist, but the parent directory **MUST** exist - if it does not (or is not a directory) then the server **SHOULD** respond with error code 404 and error message "invalid_parent_directory".
+
+If an id is given it **MUST** exist - the server **SHOULD** respond with a typical 404 and "file_not_found" response if it does not.
+
+The effect is as follows (atomically):
+
+- The to file is deleted if it currently exists
+- The from file is copied to the to files old path. It maintains its metadata, status file contents etc. **BUT NOT ITS ID**
+
+If successful the server **SHOULD** return a successful empty response.
 
 ## Extra file types
 The file type (and hence supported views) of a file are determined by some unspecifed process on the backend, this may include looking at the file extension and possibly the file contents. The server **SHOULD** recognise valid files that have the correct extention and file contents. If the client requires that a file type is correctly recognised it **SHOULD** ensure that it is uploaded under a file name with the correct extension.
@@ -1144,7 +1251,7 @@ if rowstart is passed the the end of the file then no non-header rows are return
 if cols contains invalid entries then the server **SHOULD** respond with code 400 and error 'invalid_request'.
 
 
-# Zommable image files
+# Zoommable image files
 A file type that contains images that can be rescaled and zoomed. The file type, as seen in the meta view, should be:
 ```javascript
 {
@@ -1162,6 +1269,14 @@ Additionally it should support the following view:
                 "channel_id": string,
                 "channel_name": string,
                 "metadata": optional({})
+            }),
+            "real_width": optional({
+                "value": integer,
+                "units": alternative(["mm", "um", "nm"])
+            }),
+            "real_height": optional({
+                "value": integer,
+                "units": alternative(["mm", "um", "nm"])
             }),
             "metadata": optional({})
         }
