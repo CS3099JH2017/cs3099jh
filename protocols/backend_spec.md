@@ -3,7 +3,7 @@
 
 | name                       | BE01               |
 |----------------------------|--------------------|
-| version                    | 0.1.3              |
+| version                    | 0.1.4              |
 | status                     | proposal           |
 | author                     | Ryan Wilson (rw86) |
 | serving component(s)       | backend            |
@@ -34,6 +34,8 @@ View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v
 - Changed endpoint for listing user privileges
 
 ### Version 0.1.3
+View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v0.1.3.md.html)
+
 - Removed the redundant "invalid_metadata" error.
 - Moved some sections.
 - Fixed int type in properties.
@@ -57,6 +59,10 @@ View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v
 - File uploads by id must specify overwrite
 - Moving and copying files
 
+### Version 0.1.4
+- Specified error when trying to move a directory inside itself
+- Added number matcher
+
 # Foreword: URL
 
 Within this document the URL `http://backend.endpoint/` will be used to indicate the base URL of the backend server's API endpoint.
@@ -67,6 +73,8 @@ At several points in this document a specification of a JSON value must be given
 
 ## literals
 The template `integer` matches any integer value.
+
+The template `number` matches any number value.
 
 The template `string` matches any string value.
 
@@ -1174,6 +1182,8 @@ If a path is given the file may or may not currently exist, but the parent direc
 
 If an id is given it **MUST** exist - the server **SHOULD** respond with a typical 404 and "file_not_found" response if it does not.
 
+If an attempt is made to move a directory inside itself or to replace a directory with one of its children the server **SHOULD** respond with http status 400 and error "invalid_parent"
+
 The effect is as follows (atomically):
 
 - The to file is deleted if it currently exists
@@ -1202,6 +1212,8 @@ If a directory is specified the server **SHOULD** respond with http status 400 a
 If a path is given the file may or may not currently exist, but the parent directory **MUST** exist - if it does not (or is not a directory) then the server **SHOULD** respond with error code 404 and error message "invalid_parent_directory".
 
 If an id is given it **MUST** exist - the server **SHOULD** respond with a typical 404 and "file_not_found" response if it does not.
+
+If an attempt is made to replace a directory with one of its children the server **SHOULD** respond with http status 400 and error "invalid_parent"
 
 The effect is as follows (atomically):
 
