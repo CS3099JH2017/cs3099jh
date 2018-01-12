@@ -1,9 +1,11 @@
 # BE01: Backend basic specification
 **THIS IS A DRAFT SPECFICATION AND IS NOT FINAL**
 
+**THIS IS AN INTERMEDIATE RELEASE AND SHOULD NOT BE IMPLEMENTED**
+
 | name                       | BE01               |
 |----------------------------|--------------------|
-| version                    | 0.1.4              |
+| version                    | 0.1.5(pre-release) |
 | status                     | proposal           |
 | author                     | Ryan Wilson (rw86) |
 | serving component(s)       | backend            |
@@ -60,8 +62,14 @@ View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/backend_spec-v
 - Moving and copying files
 
 ### Version 0.1.4
+View this version [here](https://rw86.host.cs.st-andrews.ac.uk/jh/BE01-v0.1.4.md.html)
+
 - Specified error when trying to move a directory inside itself
 - Added number matcher
+
+### Version 0.1.5
+- Added "user_message" to error responses.
+- Made "error_description" optional in error responses.
 
 # Foreword: URL
 
@@ -310,11 +318,12 @@ Unless otherwise noted the form of the JSON response **MUST** match either:
 {
     "status": "error",
     "error": string,
-    "error_description": string,
+    "error_description": optional(string),
+    "user_message": optional(string),
     "error_data": optional(anything)
 }
 ```
-in the case of an error. Where `error` gives a standard error name found from a specification and `error_description` some human readable error message.
+in the case of an error. Where `error` gives a standard error name found from a specification and `error_description` some human readable error message. `user_message` gives some error message suitable for displaying to the end-user. 
 
 
 Or
