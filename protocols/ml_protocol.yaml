@@ -1,0 +1,365 @@
+# Swagger page with documentation at https://app.swaggerhub.com/apis/JH-Project/machine-learning-api/1.1#/model/getPrediction
+
+swagger: '2.0'
+info:
+  version: "1.1"
+  title: 'JHProject ML API'
+  description: 'Machine learning API for 2017 JH Project.'
+  
+schemes:
+ - http
+ 
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
+
+security:
+  - Bearer: []
+
+paths:
+  /training:
+    post:
+      tags:
+        - training
+      summary: Start training a machine-learning model with the given model_id.
+      operationId: createModel
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: data
+          in: body
+          description: data
+          required: true
+          schema:
+            $ref: '#/definitions/CreateModelData'
+      responses:
+        201:
+          description: Model successfully in training
+        404:
+          description: If any of the algorithm, training_data, input_columns, or output_columns do not exist, or if the job ID is invalid, or any parameters are invalid.
+          schema:
+            $ref: '#/definitions/404Error'
+        401:
+          description: If the user does not have authorisation to access the training data.
+        500:
+          description: An error occurred while training the model.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "NullPointerException, idk"
+  /training/{model_id}:      
+    get:
+      tags:
+        - training
+      summary: Get status of model training.
+      operationId: status
+      produces:
+        - application/json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Training status sent."
+          schema:
+            $ref: '#/definitions/StatusData'
+        404:
+          description: "If model_id does not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+        401:
+          description: "If user does not have permission to view the model."
+          
+    delete:
+      tags:
+        - training
+      summary: Forcefully stop training a model. If the job can be partially trained, the partially trained model will be saved.
+      operationId: stopTraining
+      produces:
+        - application/json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+      responses:
+        204:
+          description: "Model training successfully stopped."
+          schema:
+            $ref: '#/definitions/StoppedModel'
+        404:
+          description: "If model provided does not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+        401:
+          description: "If user does not have permission to view the model."
+          
+  /model/{model_id}/prediction:
+    get:
+      tags:
+        - model
+      summary: Get a prediction given a model and input data.
+      operationId: getPrediction
+      produces:
+        - application/json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+        - name: input_data
+          in: query
+          description: Input data UUID
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Prediction results were successfully calculated."
+          schema:
+            $ref: '#/definitions/GetPredictionData'
+        404:
+          description: "If model or input_data does not exist."
+          schema:
+            $ref: '#/definitions/404Error'#
+          
+  /suggest:
+    post:
+      tags:
+        - algorithms
+      summary: Suggest relevant ML algorithms for a given training set.
+      operationId: suggest
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: data
+          in: body
+          description: data
+          required: true
+          schema:
+            $ref: '#/definitions/RequestSuggestion'
+      responses:
+        200:
+          description: "List of suggested algorithms found. The returned algorithms each have a score associated for ranking purposes, but implementations are not required to provide accurate scores - in this case, all scores should be the same."
+          schema:
+            $ref: '#/definitions/Suggest'
+        404:
+          description: "If any of input_columns, output_columns, or data_file provided do not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+  
+  /jobs:
+    get:
+      tags:
+        - algorithms
+      summary: List all possible jobs ML supports.
+      operationId: jobs
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        200:
+          description: "List of all possible jobs the ML server can perform with a description of what type of data the job is performed on."
+          schema:
+            $ref: '#/definitions/Jobs'
+            
+definitions:
+  404Error:
+    type: object
+    properties:
+      error:
+        $ref: '#/definitions/404ErrorError'
+  404ErrorError:
+    type: object
+    properties:
+      missing_fields:
+        type: array
+        items:
+          type: string
+          example: "input_data"
+  CreateModelData:
+    type: object
+    properties:
+      refresh_token:
+        type: string
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+      job_id:
+        type: string
+        example: 83451
+      model_id:
+        type: string
+        example: b50f87c8-995e-48fc-9bfd-15fbe422b847
+      training_data:
+        type: string
+        example: bccf2c80-8ebb-4bec-a15c-6f699f36e765
+      input_columns:
+        type: array
+        items:
+          $ref: '#/definitions/Column'
+      output_column:
+        $ref: '#/definitions/Column'
+      parameters:
+        type: object
+        additionalProperties: true
+        example:
+          "k": 5
+        description: An object of key value pairs where the key is the parameter id and the value is the parameter value. Parameters are as specified by the results of a /suggest or /jobs call.
+  GetPredictionData:
+    type: object
+    properties:
+      result_type:
+        $ref: '#/definitions/ParamType'
+      results:
+        type: array
+        items:
+          type: array
+          items:
+            type: string
+            description: Data items - must be same data type as result_type but converted to string.
+  StatusData:
+    type: object
+    properties:
+      percent_trained:
+        minimum: 0
+        maximum: 1
+        type: number
+        example: 0.3
+      status:
+        $ref: '#/definitions/JobStatusType'
+  RequestSuggestion:
+    type: object
+    properties:
+      data_id:
+        type: string
+        description: Data file UUID
+        example: 0f2c5828-4d40-46c9-a2db-baf2ba6817e0
+      input_columns:
+        type: array
+        items:
+          $ref: '#/definitions/Column'
+      output_columns:
+        type: array
+        items:
+          $ref: '#/definitions/Column'
+  Suggest:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/SuggestData'
+  SuggestData:
+    type: object
+    properties:
+      jobs:
+        type: array
+        items:
+          type: object
+          properties:
+            job:
+              $ref: '#/definitions/JobData'
+            score:
+              type: number
+              minimum: 0
+              maximum: 1
+              example: 0.3
+  Jobs:
+    type: object
+    properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/definitions/JobData'
+  JobData:
+    type: object
+    properties:
+      job_id:
+        type: string
+        description: Unique ID of the ML job type, used to request the same job type again in a /training call.
+        example: "83451"
+      data_type: 
+        type: string
+        example: tabular
+      algorithm:
+        type: string
+        example: naive-bayes
+      partial_training_support:
+        type: boolean
+      job_description:
+        type: string
+        example: Algorithm that calculates conditional probabilities, and then uses them to predict likely results.
+        description: User friendly description of the job.
+      parameters:
+        type: array
+        items:
+          $ref: '#/definitions/Parameter'
+  Parameter:
+    type: object
+    properties:
+      id:
+        type: string
+        example: k
+      required:
+        type: boolean
+        example: true
+      type:
+        $ref: '#/definitions/ParamType'
+      description:
+        type: string
+        example: cross validation parameter
+  Column:
+    type: object
+    properties:
+      column_name:
+        type: string
+        example: 'time-until-death'
+      column_type:
+        $ref: '#/definitions/DataType'
+  DataType:
+    type: string
+    enum:
+      - discrete
+      - continuous
+      - infer
+      - imagefilepath
+  ParamType:
+    type: string
+    enum:
+      - integer
+      - boolean
+      - string
+      - number
+  JobStatusType:
+    type: string
+    description: State of training of an ML model
+    enum:
+      - running
+      - complete
+      - failed
+      - cancelled
+  StoppedModel:
+    type: object
+    properties:
+      model_state:
+        $ref: '#/definitions/ModelState'
+  ModelState:
+    type: string
+    description: Whether or not an ML model is usable for predicting values.
+    enum:
+      - usable
+      - not usable
+        
+# Added by API Auto Mocking Plugin
+# Auto generated host and base urls. This is not permanent, and will likely need to change per group.
+host: virtserver.swaggerhub.com
+basePath: /JH-Project/machine-learning-api/1.0
