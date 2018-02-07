@@ -1,5 +1,3 @@
-# Swagger page with documentation at https://app.swaggerhub.com/apis/JH-Project/machine-learning-api/1.1#/model/getPrediction
-
 swagger: '2.0'
 info:
   version: "1.1"
@@ -11,7 +9,7 @@ schemes:
  
 securityDefinitions:
   Bearer:
-    type: apiKey
+    type: apiKey 
     name: Authorization
     in: header
 
@@ -19,10 +17,10 @@ security:
   - Bearer: []
 
 paths:
-  /training:
+  /models:
     post:
       tags:
-        - training
+        - model
       summary: Start training a machine-learning model with the given model_id.
       operationId: createModel
       consumes:
@@ -39,24 +37,24 @@ paths:
       responses:
         201:
           description: Model successfully in training
+          schema:
+            $ref: '#/definitions/TrainingResponse'
         404:
-          description: If any of the algorithm, training_data, input_columns, or output_columns do not exist, or if the job ID is invalid, or any parameters are invalid.
+          description: If any of the job_id, training_data, output_directory_path, input_columns, output_column or required parameters do not exist.
           schema:
             $ref: '#/definitions/404Error'
         401:
           description: If the user does not have authorisation to access the training data.
-        500:
-          description: An error occurred while training the model.
           schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "NullPointerException, idk"
-  /training/{model_id}:      
+            $ref: '#/definitions/Error'
+        400:
+          description: If a non existing parameter is given or if a parameter is given an incorrect value.
+          schema:
+            $ref: '#/definitions/Error'
+  /models/{project_name}/{model_id}:      
     get:
       tags:
-        - training
+        - model
       summary: Get status of model training.
       operationId: status
       produces:
@@ -67,23 +65,29 @@ paths:
           description: Model UUID
           required: true
           type: string
+        - name: project_name
+          in: path
+          description: Name of project model is within
+          required: true
+          type: string
       responses:
         200:
           description: "Training status sent."
           schema:
-            $ref: '#/definitions/StatusData'
+            $ref: '#/definitions/Status'
         404:
           description: "If model_id does not exist."
           schema:
             $ref: '#/definitions/404Error'
         401:
-          description: "If user does not have permission to view the model."
-          
+          description: "If user does not have permission to view the project the model is in."
+          schema:
+            $ref: '#/definitions/Error'
     delete:
       tags:
-        - training
-      summary: Forcefully stop training a model. If the job can be partially trained, the partially trained model will be saved.
-      operationId: stopTraining
+        - model
+      summary: Forcefully stop training a model. If model has finished training, it deletes the model file in BE.
+      operationId: deleteTraining
       produces:
         - application/json
       parameters:
@@ -92,20 +96,62 @@ paths:
           description: Model UUID
           required: true
           type: string
+        - name: project_name
+          in: path
+          description: Name of project model is within
+          required: true
+          type: string
       responses:
         204:
-          description: "Model training successfully stopped."
+          description: "Model deleted."
           schema:
-            $ref: '#/definitions/StoppedModel'
+            $ref: '#/definitions/Empty'
         404:
           description: "If model provided does not exist."
           schema:
             $ref: '#/definitions/404Error'
         401:
           description: "If user does not have permission to view the model."
-          
-  /model/{model_id}/prediction:
-    get:
+          schema:
+            $ref: '#/definitions/Error'
+  /models/stop/{project_name}/{model_id}:
+    delete:
+      tags:
+        - model
+      summary: Forcefully stop training an incrementally trained model. The partially trained model will be saved and can be used for predictions.
+      operationId: stopTraining
+      produces:
+        - application/json
+      parameters:
+      - name: model_id
+        in: path
+        description: Model UUID
+        required: true
+        type: string
+      - name: project_name
+        in: path
+        description: Name of project model is within
+        required: true
+        type: string
+      responses:
+        204:
+          description: "Model training successfully stopped, or had successfully finished before stop call was made."
+          schema:
+            $ref: '#/definitions/Empty'
+        404:
+          description: "If model provided does not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+        401:
+          description: "If user does not have permission to view the model."
+          schema:
+            $ref: '#/definitions/Error'
+        405:
+          description: "If the model referenced is not partially-trainable."
+          schema:
+            $ref: '#/definitions/Error'
+  /models/prediction/{project_name}/{model_id}:
+    post:
       tags:
         - model
       summary: Get a prediction given a model and input data.
@@ -118,20 +164,53 @@ paths:
           description: Model UUID
           required: true
           type: string
-        - name: input_data
-          in: query
-          description: Input data UUID
+        - name: project_name
+          in: path
+          description: Name of project model is within
           required: true
           type: string
+        - name: data
+          in: body
+          description: The input data for the model
+          required: true
+          schema:
+            $ref: '#/definitions/PredictionInput'
       responses:
         200:
           description: "Prediction results were successfully calculated."
           schema:
-            $ref: '#/definitions/GetPredictionData'
+            $ref: '#/definitions/GetPrediction'
         404:
           description: "If model or input_data does not exist."
           schema:
-            $ref: '#/definitions/404Error'#
+            $ref: '#/definitions/404Error'
+  /models/{project_name}:
+    get:
+      tags:
+        - model
+      summary: Get a list of models inside a given project.
+      operationId: getList
+      parameters:
+        - name: project_name
+          in: path
+          description: Project name
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        200:
+          description: A list of models inside a project
+          schema:
+            $ref: '#/definitions/StatusArray'
+        404:
+          description: The project does not exist
+          schema:
+           $ref: '#/definitions/404Error'
+        401:
+          description: "If the user does not have permission to view the data file."
+          schema:
+            $ref: '#/definitions/Error'
           
   /suggest:
     post:
@@ -159,7 +238,10 @@ paths:
           description: "If any of input_columns, output_columns, or data_file provided do not exist."
           schema:
             $ref: '#/definitions/404Error'
-  
+        401:
+          description: "If the user does not have permission to view the data file."
+          schema:
+            $ref: '#/definitions/Error'
   /jobs:
     get:
       tags:
@@ -176,19 +258,47 @@ paths:
             $ref: '#/definitions/Jobs'
             
 definitions:
+  Error:
+    type: object
+    properties:
+      error:
+        type: string
+        description: An error code
+      error_description:
+        type: string
+        description: A human readable description of the error
+      user_message:
+        type: string
+        description: Optional message to display to user
   404Error:
     type: object
     properties:
       error:
-        $ref: '#/definitions/404ErrorError'
-  404ErrorError:
+        type: string
+        description: An error code
+      error_description:
+        type: string
+        description: A human readable description of the error
+      user_message:
+        type: string
+        description: Optional message to display to user
+      error_data:
+        type: object
+        properties:
+          missing_fields:
+            type: array
+            items:
+              type: string
+              example: "input_data"
+  DataInput:
     type: object
     properties:
-      missing_fields:
-        type: array
-        items:
-          type: string
-          example: "input_data"
+      id:
+        type: string
+        description: File UUID
+      project_name:
+        type: string
+        description: Name of the project the data file belongs to
   CreateModelData:
     type: object
     properties:
@@ -197,25 +307,32 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       job_id:
         type: string
-        example: 83451
-      model_id:
-        type: string
-        example: b50f87c8-995e-48fc-9bfd-15fbe422b847
+        example: "nb83451"
       training_data:
+        $ref: '#/definitions/DataInput'
+      output_directory_path:
         type: string
-        example: bccf2c80-8ebb-4bec-a15c-6f699f36e765
+        example: path/stuff/new_job
+        description: Filepath to the directory where the user wants output files to be saved.
       input_columns:
         type: array
         items:
           $ref: '#/definitions/Column'
-      output_column:
-        $ref: '#/definitions/Column'
+      output_columns:
+        type: array
+        items:
+          $ref: '#/definitions/Column'
       parameters:
         type: object
         additionalProperties: true
         example:
           "k": 5
         description: An object of key value pairs where the key is the parameter id and the value is the parameter value. Parameters are as specified by the results of a /suggest or /jobs call.
+  GetPrediction:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/GetPredictionData'    
   GetPredictionData:
     type: object
     properties:
@@ -228,6 +345,34 @@ definitions:
           items:
             type: string
             description: Data items - must be same data type as result_type but converted to string.
+  PredictionInput:
+    type: object
+    properties:
+      data_file:
+        type: object
+        properties:
+          id:
+            type: string
+            description: File UUID
+          project_name:
+            type: string
+            description: project name
+      input_columns:
+        type: array
+        items:
+          $ref: '#/definitions/Column'
+  Status:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/StatusData'
+  StatusArray:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          $ref: '#/definitions/StatusData'
   StatusData:
     type: object
     properties:
@@ -238,13 +383,23 @@ definitions:
         example: 0.3
       status:
         $ref: '#/definitions/JobStatusType'
+      description:
+        type: string
+        description: Descriptive log of all that has occurred during the training of the model (accumulates over time).
+      id:
+        type: string
+        description: Model ID
+      start_time:
+        type: string
+        description: Time at which the model began training.
+      started_by:
+        type: string
+        description: Username of the user who started the model training.
   RequestSuggestion:
     type: object
     properties:
-      data_id:
-        type: string
-        description: Data file UUID
-        example: 0f2c5828-4d40-46c9-a2db-baf2ba6817e0
+      data_file:
+        $ref: '#/definitions/DataInput'
       input_columns:
         type: array
         items:
@@ -267,7 +422,7 @@ definitions:
           type: object
           properties:
             job:
-              $ref: '#/definitions/JobData'
+              $ref: '#/definitions/JobInfo'
             score:
               type: number
               minimum: 0
@@ -276,11 +431,16 @@ definitions:
   Jobs:
     type: object
     properties:
-        jobs:
-          type: array
-          items:
-            $ref: '#/definitions/JobData'
-  JobData:
+      data:
+        $ref: '#/definitions/JobsData'
+  JobsData:
+    type: object
+    properties:
+      jobs:
+        type: array
+        items:
+          $ref: '#/definitions/JobInfo'
+  JobInfo:
     type: object
     properties:
       job_id:
@@ -290,9 +450,9 @@ definitions:
       data_type: 
         type: string
         example: tabular
-      algorithm:
+      algorithm_name:
         type: string
-        example: naive-bayes
+        example: Naive Bayes
       partial_training_support:
         type: boolean
       job_description:
@@ -320,9 +480,9 @@ definitions:
   Column:
     type: object
     properties:
-      column_name:
-        type: string
-        example: 'time-until-death'
+      column_index:
+        type: integer
+        example: 4
       column_type:
         $ref: '#/definitions/DataType'
   DataType:
@@ -332,6 +492,7 @@ definitions:
       - continuous
       - infer
       - imagefilepath
+      - date
   ParamType:
     type: string
     enum:
@@ -347,17 +508,19 @@ definitions:
       - complete
       - failed
       - cancelled
-  StoppedModel:
+  Empty:
     type: object
     properties:
-      model_state:
-        $ref: '#/definitions/ModelState'
-  ModelState:
-    type: string
-    description: Whether or not an ML model is usable for predicting values.
-    enum:
-      - usable
-      - not usable
+      data:
+        type: object
+  TrainingResponse:
+    type: object
+    properties:
+      data:
+        type: object
+        properties:
+          model_id:  
+            type: string
         
 # Added by API Auto Mocking Plugin
 # Auto generated host and base urls. This is not permanent, and will likely need to change per group.
